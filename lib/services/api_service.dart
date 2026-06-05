@@ -7,7 +7,7 @@ import '../models/task.dart';
 class ApiService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator/web/desktop.
   // Change to your machine's IP address if testing on a physical mobile device.
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static const String baseUrl = 'https://dailyupdateapi.fkhrlit.com/api';
   
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
