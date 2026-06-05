@@ -5,9 +5,15 @@ import 'api_service.dart';
 
 // Background message handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  if (kDebugMode) {
-    print("Background message received: ${message.messageId}");
+  try {
+    await Firebase.initializeApp();
+    if (kDebugMode) {
+      print("Background message received: ${message.messageId}");
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print("Background message init error: $e");
+    }
   }
 }
 
@@ -16,12 +22,26 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? get _fcm {
+    try {
+      return FirebaseMessaging.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> initialize() async {
     try {
+      final fcm = _fcm;
+      if (fcm == null) {
+        if (kDebugMode) {
+          print("FirebaseMessaging instance not available.");
+        }
+        return;
+      }
+
       // 1. Request notification permission
-      NotificationSettings settings = await _fcm.requestPermission(
+      NotificationSettings settings = await fcm.requestPermission(
         alert: true,
         announcement: false,
         badge: true,
@@ -64,11 +84,19 @@ class NotificationService {
 
   Future<void> syncFcmToken() async {
     try {
+      final fcm = _fcm;
+      if (fcm == null) {
+        if (kDebugMode) {
+          print("Skipping token sync: FirebaseMessaging not initialized.");
+        }
+        return;
+      }
+
       // Check if user is logged in
       final token = await ApiService().getToken();
       if (token == null) return; // Not logged in yet, skip syncing
 
-      String? fcmToken = await _fcm.getToken();
+      String? fcmToken = await fcm.getToken();
       if (fcmToken != null) {
         if (kDebugMode) {
           print("FCM Token retrieved: $fcmToken");
@@ -83,3 +111,4 @@ class NotificationService {
     }
   }
 }
+
