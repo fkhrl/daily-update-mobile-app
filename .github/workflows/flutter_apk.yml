@@ -53,30 +53,46 @@ jobs:
               shutil.copy('google-services.json', 'android/app/google-services.json')
               print('Copied google-services.json.')
               
-              # settings.gradle
+              # 1. settings.gradle (modern declarative style)
               settings_path = 'android/settings.gradle'
               if os.path.exists(settings_path):
                   with open(settings_path, 'r') as f:
                       content = f.read()
-                  if 'google-services' not in content:
+                  if 'google-services' not in content and 'plugins {' in content:
                       content = content.replace('plugins {', 'plugins {\n    id \"com.google.gms.google-services\" version \"4.4.1\" apply false')
                       with open(settings_path, 'w') as f:
                           f.write(content)
                       print('Added google-services to settings.gradle.')
                       
-              # app/build.gradle
+              # 2. build.gradle (traditional buildscript classpath style)
+              build_gradle_path = 'android/build.gradle'
+              if os.path.exists(build_gradle_path):
+                  with open(build_gradle_path, 'r') as f:
+                      content = f.read()
+                  if 'google-services' not in content and 'dependencies {' in content:
+                      content = content.replace('dependencies {', 'dependencies {\n        classpath \"com.google.gms:google-services:4.4.1\"')
+                      with open(build_gradle_path, 'w') as f:
+                          f.write(content)
+                      print('Added google-services classpath to build.gradle.')
+                      
+              # 3. app/build.gradle (apply plugin)
               app_gradle_path = 'android/app/build.gradle'
               if os.path.exists(app_gradle_path):
                   with open(app_gradle_path, 'r') as f:
                       content = f.read()
                   if 'google-services' not in content:
-                      content = content.replace('plugins {', 'plugins {\n    id \"com.google.gms.google-services\"')
+                      if 'plugins {' in content:
+                          content = content.replace('plugins {', 'plugins {\n    id \"com.google.gms.google-services\"')
+                          print('Applied google-services plugin in plugins block.')
+                      else:
+                          content += '\napply plugin: \"com.google.gms.google-services\"\n'
+                          print('Appended apply plugin: com.google.gms.google-services at end.')
                       with open(app_gradle_path, 'w') as f:
                           f.write(content)
-                      print('Applied google-services plugin in app/build.gradle.')
           else:
               print('google-services.json not found in root, skipping Firebase native config.')
           "
+
 
       - name: Build APK
         run: flutter build apk --release
