@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925566632947",
+    "project_id": "daily-update-app-2ff4c",
+    "storage_bucket": "daily-update-app-2ff4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925566632947:android:73d69f019d92ffbf714886",
+        "android_client_info": {
+          "package_name": "com.example.daily_update_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzsIyWzKZi5OmxVolgUtDfzLvc-H1eCyc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
