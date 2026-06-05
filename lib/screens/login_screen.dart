@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'register_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -32,6 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response['success'] == true) {
+        // Sync FCM token to backend
+        await NotificationService().syncFcmToken();
+        
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
         );

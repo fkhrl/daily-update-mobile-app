@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -33,6 +34,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (response['success'] == true) {
+        // Sync FCM token to backend
+        await NotificationService().syncFcmToken();
+        
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
           (route) => false,

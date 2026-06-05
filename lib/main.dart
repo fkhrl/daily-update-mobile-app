@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/api_service.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    // Initialize Firebase
+    await Firebase.initializeApp();
+    // Initialize Push Notifications
+    await NotificationService().initialize();
+  } catch (e) {
+    // Fallback if Firebase config is missing or not fully initialized
+    debugPrint("Firebase init failed: $e");
+  }
+
   runApp(const MyApp());
 }
 

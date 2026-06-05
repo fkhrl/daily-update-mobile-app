@@ -97,7 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final tomorrow = today.add(const Duration(days: 1));
 
     return _tasks.where((task) {
-      final taskDate = DateTime(task.scheduledDate.year, task.scheduledDate.month, task.scheduledDate.day);
+      final taskDate = DateTime(task.scheduledAt.year, task.scheduledAt.month, task.scheduledAt.day);
       if (tabIndex == 0) {
         return taskDate.isAtSameMomentAs(today);
       } else if (tabIndex == 1) {
@@ -162,24 +162,46 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('MMM d, yyyy').format(task.scheduledDate),
+                        DateFormat('MMM d, yyyy h:mm a').format(task.scheduledAt),
                         style: const TextStyle(color: Color(0xFF818CF8), fontSize: 12, fontWeight: FontWeight.w600),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: task.isNotified ? Colors.green.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          task.isNotified ? 'Email Sent' : 'Pending Email',
-                          style: TextStyle(
-                            color: task.isNotified ? Colors.greenAccent : Colors.amberAccent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                      Row(
+                        children: [
+                          if (task.isInstant) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Instant',
+                                style: TextStyle(
+                                  color: Colors.purpleAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: task.isNotified ? Colors.green.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              task.isNotified ? 'Notified' : 'Pending',
+                              style: TextStyle(
+                                color: task.isNotified ? Colors.greenAccent : Colors.amberAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      )
+                        ],
+                      ),
                     ],
                   ),
                 ],

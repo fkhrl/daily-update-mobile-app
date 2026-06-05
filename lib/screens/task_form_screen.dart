@@ -17,6 +17,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late DateTime _selectedDate;
+  bool _isInstant = false;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -25,11 +26,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     super.initState();
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _descriptionController = TextEditingController(text: widget.task?.description ?? '');
-    _selectedDate = widget.task?.scheduledDate ?? DateTime.now();
+    _selectedDate = widget.task?.scheduledAt ?? DateTime.now();
+    _isInstant = widget.task?.isInstant ?? false;
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _selectDateTime(BuildContext context) async {
+    final DateTime? datePicked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
@@ -48,10 +50,36 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         );
       },
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+    if (datePicked != null) {
+      if (!mounted) return;
+      final TimeOfDay? timePicked = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_selectedDate),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: Color(0xFF6366F1),
+                onPrimary: Colors.white,
+                surface: Color(0xFF1E293B),
+                onSurface: Colors.white,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+      if (timePicked != null) {
+        setState(() {
+          _selectedDate = DateTime(
+            datePicked.year,
+            datePicked.month,
+            datePicked.day,
+            timePicked.hour,
+            timePicked.minute,
+          );
+        });
+      }
     }
   }
 
@@ -70,6 +98,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           _titleController.text.trim(),
           _descriptionController.text.trim(),
           _selectedDate,
+          _isInstant,
         );
       } else {
         // Update existing task
@@ -78,6 +107,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           _titleController.text.trim(),
           _descriptionController.text.trim(),
           _selectedDate,
+          _isInstant,
           widget.task!.isNotified,
         );
       }
@@ -162,13 +192,29 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 color: const Color(0xFF1E293B),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  title: const Text('Scheduled Date', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  title: const Text('Scheduled Date & Time', style: TextStyle(color: Colors.white70, fontSize: 14)),
                   subtitle: Text(
-                    DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
+                    DateFormat('EEEE, MMMM d, yyyy h:mm a').format(_selectedDate),
                     style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  trailing: const Icon(Icons.calendar_today, color: Color(0xFF818CF8)),
-                  onTap: () => _selectDate(context),
+                  trailing: const Icon(Icons.access_time, color: Color(0xFF818CF8)),
+                  onTap: () => _selectDateTime(context),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Card(
+                color: const Color(0xFF1E293B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: SwitchListTile(
+                  title: const Text('Instant Notification', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Send email and push notification immediately', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  value: _isInstant,
+                  activeColor: const Color(0xFF6366F1),
+                  onChanged: (bool value) {
+                    setState(() {
+                      _isInstant = value;
+                    });
+                  },
                 ),
               ),
               const SizedBox(height: 32),

@@ -110,9 +110,8 @@ class ApiService {
     throw Exception('Failed to load tasks');
   }
 
-  Future<Task> createTask(String title, String? description, DateTime scheduledDate) async {
+  Future<Task> createTask(String title, String? description, DateTime scheduledAt, bool isInstant) async {
     final token = await getToken();
-    final dateStr = "${scheduledDate.year.toString().padLeft(4, '0')}-${scheduledDate.month.toString().padLeft(2, '0')}-${scheduledDate.day.toString().padLeft(2, '0')}";
     
     final response = await http.post(
       Uri.parse('$baseUrl/tasks'),
@@ -120,7 +119,8 @@ class ApiService {
       body: jsonEncode({
         'title': title,
         'description': description,
-        'scheduled_date': dateStr,
+        'scheduled_at': scheduledAt.toIso8601String(),
+        'is_instant': isInstant,
       }),
     );
 
@@ -131,9 +131,8 @@ class ApiService {
     throw Exception(data['message'] ?? 'Failed to create task');
   }
 
-  Future<Task> updateTask(int id, String title, String? description, DateTime scheduledDate, bool isNotified) async {
+  Future<Task> updateTask(int id, String title, String? description, DateTime scheduledAt, bool isInstant, bool isNotified) async {
     final token = await getToken();
-    final dateStr = "${scheduledDate.year.toString().padLeft(4, '0')}-${scheduledDate.month.toString().padLeft(2, '0')}-${scheduledDate.day.toString().padLeft(2, '0')}";
 
     final response = await http.put(
       Uri.parse('$baseUrl/tasks/$id'),
@@ -141,7 +140,8 @@ class ApiService {
       body: jsonEncode({
         'title': title,
         'description': description,
-        'scheduled_date': dateStr,
+        'scheduled_at': scheduledAt.toIso8601String(),
+        'is_instant': isInstant,
         'is_notified': isNotified,
       }),
     );
@@ -171,6 +171,18 @@ class ApiService {
     final response = await http.post(
       Uri.parse('$baseUrl/tasks/send-test-notifications'),
       headers: _headers(token),
+    );
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> saveFcmToken(String fcmToken) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/save-fcm-token'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'fcm_token': fcmToken,
+      }),
     );
     return jsonDecode(response.body);
   }
