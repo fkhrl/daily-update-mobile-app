@@ -43,99 +43,112 @@ jobs:
 
       - name: Configure Android native platform (Internet & Firebase)
         run: |
-          python3 -c "
-          import os, shutil
+          python3 << 'PYEOF'
+          import os, re, shutil
+
           # Add Internet permission
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(manifest_path):
               with open(manifest_path, 'r') as f:
                   content = f.read()
               if 'android.permission.INTERNET' not in content:
-                  content = content.replace('<application', '<uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
+                  content = content.replace('<application', '<uses-permission android:name="android.permission.INTERNET"/>\n    <application')
                   with open(manifest_path, 'w') as f:
                       f.write(content)
                   print('Added INTERNET permission.')
-          
+
           # Add Firebase plugin if google-services.json is present
           google_json = 'app/google-services.json'
           if os.path.exists(google_json):
               shutil.copy(google_json, 'android/app/google-services.json')
               print('Copied google-services.json.')
-              
+
               # 1. settings.gradle (modern declarative style)
               settings_path = 'android/settings.gradle'
               if os.path.exists(settings_path):
                   with open(settings_path, 'r') as f:
                       content = f.read()
                   if 'google-services' not in content and 'plugins {' in content:
-                      content = content.replace('plugins {', 'plugins {\n    id \"com.google.gms.google-services\" version \"4.4.1\" apply false')
+                      content = content.replace('plugins {', 'plugins {\n    id "com.google.gms.google-services" version "4.4.1" apply false')
                       with open(settings_path, 'w') as f:
                           f.write(content)
                       print('Added google-services to settings.gradle.')
-                      
-              # 2. build.gradle (traditional buildscript classpath style)
+
+              # 2. android/build.gradle (traditional buildscript classpath style)
               build_gradle_path = 'android/build.gradle'
               if os.path.exists(build_gradle_path):
                   with open(build_gradle_path, 'r') as f:
                       content = f.read()
                   if 'google-services' not in content and 'dependencies {' in content:
-                      content = content.replace('dependencies {', 'dependencies {\n        classpath \"com.google.gms:google-services:4.4.1\"')
+                      content = content.replace('dependencies {', 'dependencies {\n        classpath "com.google.gms:google-services:4.4.1"')
                       with open(build_gradle_path, 'w') as f:
                           f.write(content)
                       print('Added google-services classpath to build.gradle.')
-                      
-              # 3. app/build.gradle (apply plugin)
+
+              # 3. android/app/build.gradle (apply plugin)
               app_gradle_path = 'android/app/build.gradle'
               if os.path.exists(app_gradle_path):
                   with open(app_gradle_path, 'r') as f:
                       content = f.read()
                   if 'google-services' not in content:
                       if 'plugins {' in content:
-                          content = content.replace('plugins {', 'plugins {\n    id \"com.google.gms.google-services\"')
+                          content = content.replace('plugins {', 'plugins {\n    id "com.google.gms.google-services"')
                           print('Applied google-services plugin in plugins block.')
                       else:
-                          content += '\napply plugin: \"com.google.gms.google-services\"\n'
+                          content += '\napply plugin: "com.google.gms.google-services"\n'
                           print('Appended apply plugin: com.google.gms.google-services at end.')
                       with open(app_gradle_path, 'w') as f:
                           f.write(content)
           else:
-              print('google-services.json not found in app/ directory, skipping Firebase native config.')
-              
-          # Force compileSdk to 35 for sensors_plus / androidx compatibility
-          import re
+              print('google-services.json not found in app/ — skipping Firebase native config.')
+
+          # ---------------------------------------------------------------
+          # CRITICAL FIX: Force compileSdk 35 on ALL subprojects
+          # (including sensors_plus and other Flutter plugins)
+          # by injecting a subprojects block into android/build.gradle
+          # ---------------------------------------------------------------
+          subprojects_block = """
+// Force all plugins (e.g. sensors_plus) to compile with SDK 35
+subprojects {
+    afterEvaluate { proj ->
+        if (proj.hasProperty('android')) {
+            proj.android.compileSdkVersion 35
+            if (proj.android.hasProperty('buildToolsVersion')) {
+                proj.android.buildToolsVersion '35.0.0'
+            }
+        }
+    }
+}
+"""
+          root_build_gradle = 'android/build.gradle'
+          if os.path.exists(root_build_gradle):
+              with open(root_build_gradle, 'r') as f:
+                  content = f.read()
+              if 'subprojects' not in content:
+                  content += subprojects_block
+                  with open(root_build_gradle, 'w') as f:
+                      f.write(content)
+                  print('Injected subprojects compileSdk override into android/build.gradle.')
+              else:
+                  print('subprojects block already present in android/build.gradle.')
+              print('--- android/build.gradle ---')
+              print(content)
+
+          # Also patch app/build.gradle directly (belt-and-suspenders)
           app_gradle_path = 'android/app/build.gradle'
           if os.path.exists(app_gradle_path):
               with open(app_gradle_path, 'r') as f:
                   content = f.read()
-              # Match all variants: compileSdk 33, compileSdk = 33,
-              # compileSdk flutter.compileSdkVersion, compileSdk = flutter.compileSdkVersion
-              content = re.sub(
-                  r'compileSdkVersion\s*=?\s*(flutter\.compileSdkVersion|\d+)',
-                  'compileSdkVersion 35',
-                  content
-              )
-              content = re.sub(
-                  r'compileSdk\s*=?\s*(flutter\.compileSdkVersion|\d+)',
-                  'compileSdk 35',
-                  content
-              )
-              # Also ensure targetSdk is at least 35
-              content = re.sub(
-                  r'targetSdkVersion\s*=?\s*(flutter\.targetSdkVersion|\d+)',
-                  'targetSdkVersion 35',
-                  content
-              )
-              content = re.sub(
-                  r'targetSdk\s*=?\s*(flutter\.targetSdkVersion|\d+)',
-                  'targetSdk 35',
-                  content
-              )
+              content = re.sub(r'compileSdkVersion\s*=?\s*(flutter\.compileSdkVersion|\d+)', 'compileSdkVersion 35', content)
+              content = re.sub(r'compileSdk\s*=?\s*(flutter\.compileSdkVersion|\d+)', 'compileSdk 35', content)
+              content = re.sub(r'targetSdkVersion\s*=?\s*(flutter\.targetSdkVersion|\d+)', 'targetSdkVersion 35', content)
+              content = re.sub(r'targetSdk\s*=?\s*(flutter\.targetSdkVersion|\d+)', 'targetSdk 35', content)
               with open(app_gradle_path, 'w') as f:
                   f.write(content)
-              print('Forced compileSdk and targetSdk to 35.')
-              print('Updated app/build.gradle content:')
+              print('Patched app compileSdk/targetSdk to 35.')
+              print('--- android/app/build.gradle ---')
               print(content)
-          "
+          PYEOF
 
 
       - name: Build APK
