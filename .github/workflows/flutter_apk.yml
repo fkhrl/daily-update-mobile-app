@@ -100,6 +100,19 @@ jobs:
                           f.write(content)
           else:
               print('google-services.json not found in app/ directory, skipping Firebase native config.')
+              
+          # Force compileSdk to 34 for sensors_plus compatibility
+          app_gradle_path = 'android/app/build.gradle'
+          if os.path.exists(app_gradle_path):
+              with open(app_gradle_path, 'r') as f:
+                  content = f.read()
+              content = content.replace('compileSdk flutter.compileSdkVersion', 'compileSdk 34')
+              content = content.replace('compileSdkVersion flutter.compileSdkVersion', 'compileSdkVersion 34')
+              content = content.replace('compileSdk 33', 'compileSdk 34')
+              content = content.replace('compileSdkVersion 33', 'compileSdkVersion 34')
+              with open(app_gradle_path, 'w') as f:
+                  f.write(content)
+              print('Forced compileSdk to 34.')
           "
 
 
