@@ -16,6 +16,8 @@ dependencies:
   intl: ^0.19.0
   firebase_core: ^2.27.0
   firebase_messaging: ^14.7.15
+  table_calendar: ^3.1.1
+  google_fonts: ^6.2.0
 
 
 dev_dependencies:
@@ -25,3 +27,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/logo.png

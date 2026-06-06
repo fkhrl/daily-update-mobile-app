@@ -108,6 +108,35 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }).toList();
   }
 
+  Color _getPriorityColor(String p) {
+    switch (p.toLowerCase()) {
+      case 'urgent':
+        return Colors.redAccent;
+      case 'high':
+        return Colors.orangeAccent;
+      case 'medium':
+        return Colors.amberAccent;
+      case 'low':
+        return Colors.greenAccent;
+      default:
+        return Colors.white54;
+    }
+  }
+
+  Color _getStatusColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'completed':
+        return Colors.greenAccent;
+      case 'in_progress':
+        return Colors.blueAccent;
+      case 'cancelled':
+        return Colors.grey;
+      case 'pending':
+      default:
+        return Colors.amberAccent;
+    }
+  }
+
   Widget _buildTaskList(List<Task> tasks) {
     if (tasks.isEmpty) {
       return Center(
@@ -130,6 +159,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       itemCount: tasks.length,
       itemBuilder: (context, index) {
         final task = tasks[index];
+        final priorityColor = _getPriorityColor(task.priority);
+        final statusColor = _getStatusColor(task.status);
+
         return Dismissible(
           key: Key(task.id.toString()),
           direction: DismissDirection.endToStart,
@@ -142,22 +174,91 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           onDismissed: (direction) => _deleteTask(task.id),
           child: Card(
             color: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: priorityColor.withOpacity(0.3), width: 1),
+            ),
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              title: Text(
-                task.title,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              title: Row(
+                children: [
+                  // Category Label Chip
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF334155),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      task.category.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      task.title,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Priority Dot/Tag
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: priorityColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: priorityColor.withOpacity(0.5),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        )
+                      ],
+                    ),
+                  ),
+                ],
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (task.description != null && task.description!.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(task.description!, style: const TextStyle(color: Colors.white70)),
+                    Text(task.description!, style: const TextStyle(color: Colors.white70, fontSize: 14)),
                   ],
                   const SizedBox(height: 12),
+
+                  // Metadata Badges Row (Recurrence and Reminders)
+                  Row(
+                    children: [
+                      if (task.recurrence != 'none') ...[
+                        const Icon(Icons.repeat, color: Colors.white60, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          task.recurrence.toUpperCase(),
+                          style: const TextStyle(color: Colors.white60, fontSize: 11),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (task.reminders.isNotEmpty) ...[
+                        const Icon(Icons.notifications_active_outlined, color: Color(0xFF818CF8), size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${task.reminders.length} reminder(s)',
+                          style: const TextStyle(color: Color(0xFF818CF8), fontSize: 11),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Time and Status Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -185,6 +286,25 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               ),
                             ),
                           ],
+                          // Status Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
+                            ),
+                            child: Text(
+                              task.status.replaceAll('_', ' ').toUpperCase(),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          // Notification Status Badge
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -195,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               task.isNotified ? 'Notified' : 'Pending',
                               style: TextStyle(
                                 color: task.isNotified ? Colors.greenAccent : Colors.amberAccent,
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -227,7 +347,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: const Text('My Daily Updates', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('TaskDigest', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF1E1B4B),
         actions: [
           IconButton(

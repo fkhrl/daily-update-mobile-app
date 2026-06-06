@@ -110,7 +110,18 @@ class ApiService {
     throw Exception('Failed to load tasks');
   }
 
-  Future<Task> createTask(String title, String? description, DateTime scheduledAt, bool isInstant) async {
+  Future<Task> createTask(
+    String title,
+    String? description,
+    DateTime scheduledAt,
+    bool isInstant, {
+    String priority = 'medium',
+    String category = 'personal',
+    String status = 'pending',
+    String recurrence = 'none',
+    int recurrenceInterval = 1,
+    List<DateTime>? reminders,
+  }) async {
     final token = await getToken();
     
     final response = await http.post(
@@ -121,6 +132,12 @@ class ApiService {
         'description': description,
         'scheduled_at': scheduledAt.toIso8601String(),
         'is_instant': isInstant,
+        'priority': priority,
+        'category': category,
+        'status': status,
+        'recurrence': recurrence,
+        'recurrence_interval': recurrenceInterval,
+        'reminders': reminders?.map((r) => r.toIso8601String()).toList(),
       }),
     );
 
@@ -131,7 +148,20 @@ class ApiService {
     throw Exception(data['message'] ?? 'Failed to create task');
   }
 
-  Future<Task> updateTask(int id, String title, String? description, DateTime scheduledAt, bool isInstant, bool isNotified) async {
+  Future<Task> updateTask(
+    int id,
+    String title,
+    String? description,
+    DateTime scheduledAt,
+    bool isInstant,
+    bool isNotified, {
+    String? priority,
+    String? category,
+    String? status,
+    String? recurrence,
+    int? recurrenceInterval,
+    List<DateTime>? reminders,
+  }) async {
     final token = await getToken();
 
     final response = await http.put(
@@ -143,6 +173,12 @@ class ApiService {
         'scheduled_at': scheduledAt.toIso8601String(),
         'is_instant': isInstant,
         'is_notified': isNotified,
+        if (priority != null) 'priority': priority,
+        if (category != null) 'category': category,
+        if (status != null) 'status': status,
+        if (recurrence != null) 'recurrence': recurrence,
+        if (recurrenceInterval != null) 'recurrence_interval': recurrenceInterval,
+        if (reminders != null) 'reminders': reminders.map((r) => r.toIso8601String()).toList(),
       }),
     );
 
