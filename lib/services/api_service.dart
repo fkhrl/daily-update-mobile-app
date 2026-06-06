@@ -122,6 +122,7 @@ class ApiService {
     String recurrence = 'none',
     int recurrenceInterval = 1,
     List<DateTime>? reminders,
+    List<Map<String, dynamic>>? subtasks,
   }) async {
     final token = await getToken();
     
@@ -139,6 +140,7 @@ class ApiService {
         'recurrence': recurrence,
         'recurrence_interval': recurrenceInterval,
         'reminders': reminders?.map((r) => r.toIso8601String()).toList(),
+        if (subtasks != null) 'subtasks': subtasks,
       }),
     );
 
@@ -162,6 +164,7 @@ class ApiService {
     String? recurrence,
     int? recurrenceInterval,
     List<DateTime>? reminders,
+    List<Map<String, dynamic>>? subtasks,
   }) async {
     final token = await getToken();
 
@@ -180,6 +183,7 @@ class ApiService {
         if (recurrence != null) 'recurrence': recurrence,
         if (recurrenceInterval != null) 'recurrence_interval': recurrenceInterval,
         if (reminders != null) 'reminders': reminders.map((r) => r.toIso8601String()).toList(),
+        if (subtasks != null) 'subtasks': subtasks,
       }),
     );
 
@@ -272,5 +276,21 @@ class ApiService {
       return data;
     }
     throw Exception(data['message'] ?? 'Failed to submit feedback');
+  }
+
+  Future<void> reorderTasks(List<int> taskIds) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/tasks/reorder'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'ids': taskIds,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode != 200 || data['success'] != true) {
+      throw Exception(data['message'] ?? 'Failed to reorder tasks');
+    }
   }
 }

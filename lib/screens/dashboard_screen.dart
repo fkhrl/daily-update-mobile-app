@@ -177,13 +177,55 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       );
     }
 
-    return ListView.builder(
+    return ReorderableListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: tasks.length,
+      onReorder: (oldIndex, newIndex) async {
+        setState(() {
+          if (newIndex > oldIndex) {
+            newIndex -= 1;
+          }
+          final Task item = tasks.removeAt(oldIndex);
+          tasks.insert(newIndex, item);
+
+          // Update positions in original _tasks list
+          final Map<int, int> newPositions = {};
+          for (int i = 0; i < tasks.length; i++) {
+            newPositions[tasks[i].id] = i;
+          }
+
+          _tasks.sort((a, b) {
+            final posA = newPositions[a.id];
+            final posB = newPositions[b.id];
+            if (posA != null && posB != null) {
+              return posA.compareTo(posB);
+            }
+            if (posA != null) return -1;
+            if (posB != null) return 1;
+            return a.position.compareTo(b.position);
+          });
+        });
+
+        final List<int> orderedIds = tasks.map((t) => t.id).toList();
+        try {
+          await ApiService().reorderTasks(orderedIds);
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to reorder: $e')),
+          );
+          _loadTasks();
+        }
+      },
       itemBuilder: (context, index) {
         final task = tasks[index];
         final priorityColor = _getPriorityColor(task.priority);
         final statusColor = _getStatusColor(task.status);
+        final isOverdue = task.scheduledAt.isBefore(DateTime.now()) &&
+            task.status != 'completed' &&
+            task.status != 'cancelled';
+        final cardBorder = isOverdue
+            ? BorderSide(color: Colors.redAccent.withOpacity(0.8), width: 1.8)
+            : BorderSide(color: priorityColor.withOpacity(0.3), width: 1);
 
         return Dismissible(
           key: Key(task.id.toString()),
@@ -199,7 +241,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             color: const Color(0xFF1E293B),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: priorityColor.withOpacity(0.3), width: 1),
+              side: cardBorder,
             ),
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
@@ -257,7 +299,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   ],
                   const SizedBox(height: 12),
 
-                  // Metadata Badges Row (Recurrence and Reminders)
+                  // Metadata Badges Row (Recurrence, Reminders, Checklist)
                   Row(
                     children: [
                       if (task.recurrence != 'none') ...[
@@ -276,18 +318,66 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           '${task.reminders.length} reminder(s)',
                           style: const TextStyle(color: Color(0xFF818CF8), fontSize: 11),
                         ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (task.subtasks.isNotEmpty) ...[
+                        const Icon(Icons.checklist, color: Colors.emeraldAccent, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${task.completionPercentage}% checklist',
+                          style: const TextStyle(color: Colors.emeraldAccent, fontSize: 11),
+                        ),
                       ],
                     ],
                   ),
+                  if (task.subtasks.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: task.completionPercentage / 100,
+                        backgroundColor: Colors.white12,
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.emeraldAccent),
+                        minHeight: 3,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
 
                   // Time and Status Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        DateFormat('MMM d, yyyy h:mm a').format(task.scheduledAt),
-                        style: const TextStyle(color: Color(0xFF818CF8), fontSize: 12, fontWeight: FontWeight.w600),
+                      Row(
+                        children: [
+                          Text(
+                            DateFormat('MMM d, yyyy h:mm a').format(task.scheduledAt),
+                            style: TextStyle(
+                              color: isOverdue ? Colors.redAccent : const Color(0xFF818CF8),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (isOverdue) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                              ),
+                              child: const Text(
+                                'OVERDUE ⚠️',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Row(
                         children: [

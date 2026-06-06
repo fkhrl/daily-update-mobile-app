@@ -36,6 +36,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   bool _remind1Hour = false;
   final List<DateTime> _customReminders = [];
 
+  // Subtasks checklist state variables
+  final List<Subtask> _subtasks = [];
+  final TextEditingController _subtaskTitleController = TextEditingController();
+
   final List<String> _predefinedCategories = [
     'personal',
     'work',
@@ -84,6 +88,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           _customReminders.add(reminder);
         }
       }
+      _subtasks.addAll(widget.task!.subtasks);
     } else {
       _customCategoryController = TextEditingController();
     }
@@ -94,6 +99,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _customCategoryController.dispose();
+    _subtaskTitleController.dispose();
     super.dispose();
   }
 
@@ -239,6 +245,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
     finalReminders.addAll(_customReminders);
 
+    final List<Map<String, dynamic>> subtaskPayload = _subtasks.map((s) => {
+      'title': s.title,
+      'is_completed': s.isCompleted,
+    }).toList();
+
     try {
       if (widget.task == null || widget.task!.id == 0) {
         // Create new task
@@ -253,6 +264,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           recurrence: _selectedRecurrence,
           recurrenceInterval: _recurrenceInterval,
           reminders: finalReminders,
+          subtasks: subtaskPayload,
         );
       } else {
         // Update existing task
@@ -269,6 +281,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           recurrence: _selectedRecurrence,
           recurrenceInterval: _recurrenceInterval,
           reminders: finalReminders,
+          subtasks: subtaskPayload,
         );
       }
       Navigator.of(context).pop(true);
@@ -686,6 +699,105 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         ),
                         icon: const Icon(Icons.add, size: 16),
                         label: const Text('Add Custom Reminder Time'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Subtasks / Checklist UI
+              Card(
+                color: const Color(0xFF1E293B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Subtasks / Checklist',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_subtasks.isEmpty) ...[
+                        const Text('No subtasks added yet.', style: TextStyle(color: Colors.white30, fontSize: 13)),
+                      ] else ...[
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _subtasks.length,
+                          itemBuilder: (context, index) {
+                            final subtask = _subtasks[index];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Checkbox(
+                                value: subtask.isCompleted,
+                                activeColor: const Color(0xFF6366F1),
+                                checkColor: Colors.black,
+                                onChanged: (val) {
+                                  setState(() {
+                                    subtask.isCompleted = val ?? false;
+                                  });
+                                },
+                              ),
+                              title: Text(
+                                subtask.title,
+                                style: TextStyle(
+                                  color: subtask.isCompleted ? Colors.white38 : Colors.white,
+                                  decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.redAccent, size: 18),
+                                onPressed: () {
+                                  setState(() {
+                                    _subtasks.removeAt(index);
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _subtaskTitleController,
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              decoration: const InputDecoration(
+                                hintText: 'Add new checklist item...',
+                                hintStyle: TextStyle(color: Colors.white30),
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              final text = _subtaskTitleController.text.trim();
+                              if (text.isNotEmpty) {
+                                setState(() {
+                                  _subtasks.add(Subtask(
+                                    id: 0,
+                                    taskId: widget.task?.id ?? 0,
+                                    title: text,
+                                    isCompleted: false,
+                                    position: _subtasks.length,
+                                  ));
+                                  _subtaskTitleController.clear();
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6366F1),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            child: const Text('Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ],
                       ),
                     ],
                   ),

@@ -1,3 +1,39 @@
+class Subtask {
+  final int id;
+  final int taskId;
+  final String title;
+  bool isCompleted;
+  final int position;
+
+  Subtask({
+    required this.id,
+    required this.taskId,
+    required this.title,
+    required this.isCompleted,
+    required this.position,
+  });
+
+  factory Subtask.fromJson(Map<String, dynamic> json) {
+    return Subtask(
+      id: json['id'] ?? 0,
+      taskId: json['task_id'] ?? 0,
+      title: json['title'] ?? '',
+      isCompleted: json['is_completed'] == 1 || json['is_completed'] == true,
+      position: json['position'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'task_id': taskId,
+      'title': title,
+      'is_completed': isCompleted,
+      'position': position,
+    };
+  }
+}
+
 class Task {
   final int id;
   final String title;
@@ -11,6 +47,9 @@ class Task {
   final String recurrence;
   final int recurrenceInterval;
   final List<DateTime> reminders;
+  final int position;
+  final int completionPercentage;
+  final List<Subtask> subtasks;
 
   Task({
     required this.id,
@@ -25,6 +64,9 @@ class Task {
     required this.recurrence,
     required this.recurrenceInterval,
     required this.reminders,
+    required this.position,
+    required this.completionPercentage,
+    required this.subtasks,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -42,8 +84,13 @@ class Task {
       recurrenceInterval: json['recurrence_interval'] ?? 1,
       reminders: json['reminders'] != null
           ? (json['reminders'] as List)
-              .map((r) => DateTime.parse(r['remind_at']))
+              .map((r) => DateTime.parse(r['remind_at'] ?? r['reminders'] ?? ''))
               .toList()
+          : [],
+      position: json['position'] ?? 0,
+      completionPercentage: json['completion_percentage'] ?? 0,
+      subtasks: json['subtasks'] != null
+          ? (json['subtasks'] as List).map((s) => Subtask.fromJson(s)).toList()
           : [],
     );
   }
@@ -62,6 +109,9 @@ class Task {
       'recurrence': recurrence,
       'recurrence_interval': recurrenceInterval,
       'reminders': reminders.map((r) => r.toIso8601String()).toList(),
+      'position': position,
+      'completion_percentage': completionPercentage,
+      'subtasks': subtasks.map((s) => s.toJson()).toList(),
     };
   }
 }
