@@ -101,22 +101,46 @@ jobs:
           else:
               print('google-services.json not found in app/ directory, skipping Firebase native config.')
               
-          # Force compileSdk to 34 for sensors_plus compatibility
+          # Force compileSdk to 35 for sensors_plus / androidx compatibility
+          import re
           app_gradle_path = 'android/app/build.gradle'
           if os.path.exists(app_gradle_path):
               with open(app_gradle_path, 'r') as f:
                   content = f.read()
-              content = content.replace('compileSdk flutter.compileSdkVersion', 'compileSdk 34')
-              content = content.replace('compileSdkVersion flutter.compileSdkVersion', 'compileSdkVersion 34')
-              content = content.replace('compileSdk 33', 'compileSdk 34')
-              content = content.replace('compileSdkVersion 33', 'compileSdkVersion 34')
+              # Match all variants: compileSdk 33, compileSdk = 33,
+              # compileSdk flutter.compileSdkVersion, compileSdk = flutter.compileSdkVersion
+              content = re.sub(
+                  r'compileSdkVersion\s*=?\s*(flutter\.compileSdkVersion|\d+)',
+                  'compileSdkVersion 35',
+                  content
+              )
+              content = re.sub(
+                  r'compileSdk\s*=?\s*(flutter\.compileSdkVersion|\d+)',
+                  'compileSdk 35',
+                  content
+              )
+              # Also ensure targetSdk is at least 35
+              content = re.sub(
+                  r'targetSdkVersion\s*=?\s*(flutter\.targetSdkVersion|\d+)',
+                  'targetSdkVersion 35',
+                  content
+              )
+              content = re.sub(
+                  r'targetSdk\s*=?\s*(flutter\.targetSdkVersion|\d+)',
+                  'targetSdk 35',
+                  content
+              )
               with open(app_gradle_path, 'w') as f:
                   f.write(content)
-              print('Forced compileSdk to 34.')
+              print('Forced compileSdk and targetSdk to 35.')
+              print('Updated app/build.gradle content:')
+              print(content)
           "
 
 
       - name: Build APK
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.vfs.watch=false"
         run: flutter build apk --release
 
       - name: Upload APK Artifact
