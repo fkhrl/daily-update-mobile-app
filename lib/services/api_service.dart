@@ -42,7 +42,7 @@ class ApiService {
     };
   }
 
-  Future<Map<String, dynamic>> register(String name, String email, String password) async {
+  Future<Map<String, dynamic>> register(String name, String email, String password, {String? referralCode}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/register'),
       headers: _headers(null),
@@ -51,6 +51,7 @@ class ApiService {
         'email': email,
         'password': password,
         'password_confirmation': password,
+        if (referralCode != null && referralCode.isNotEmpty) 'referral_code': referralCode,
       }),
     );
 
@@ -238,5 +239,38 @@ class ApiService {
       return data['data'];
     }
     throw Exception(data['message'] ?? 'Failed to parse task with AI');
+  }
+
+  Future<Map<String, dynamic>> getReferralStats() async {
+    final token = await getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/referrals'),
+      headers: _headers(token),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data['data'];
+    }
+    throw Exception(data['message'] ?? 'Failed to load referral stats');
+  }
+
+  Future<Map<String, dynamic>> submitFeedback(String title, String description, Map<String, dynamic> deviceInfo) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/feedback'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'title': title,
+        'description': description,
+        'device_info': deviceInfo,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201 && data['success'] == true) {
+      return data;
+    }
+    throw Exception(data['message'] ?? 'Failed to submit feedback');
   }
 }

@@ -15,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _referralController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -31,6 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _nameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text,
+        referralCode: _referralController.text.trim(),
       );
 
       if (response['success'] == true) {
@@ -75,6 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _referralController.dispose();
     super.dispose();
   }
 
@@ -233,6 +236,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         validator: (value) =>
                             value == null || value.length < 6 ? 'Password must be 6+ characters' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Referral Code Input
+                      TextFormField(
+                        controller: _referralController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Referral Code (Optional)',
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          prefixIcon: const Icon(Icons.card_giftcard, color: Colors.white70),
+                          filled: true,
+                          fillColor: Colors.black.withOpacity(0.2),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 24),
 

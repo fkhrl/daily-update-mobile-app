@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shake/shake.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'task_form_screen.dart';
+import 'referral_screen.dart';
+import 'feedback_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -17,12 +20,32 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   List<Task> _tasks = [];
   bool _isLoading = false;
   String? _errorMessage;
+  ShakeDetector? _shakeDetector;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadTasks();
+    _shakeDetector = ShakeDetector.autoStart(
+      onPhoneShake: () {
+        _showFeedbackDialog();
+      },
+    );
+  }
+
+  void _showFeedbackDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => const FeedbackDialog(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _shakeDetector?.stopListening();
+    super.dispose();
   }
 
   Future<void> _loadTasks() async {
@@ -549,6 +572,90 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF0F172A),
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E1B4B),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        height: 50,
+                        width: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.assignment_turned_in_outlined,
+                            color: Color(0xFF818CF8),
+                            size: 40,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'TaskDigest',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.dashboard_outlined, color: Colors.white70),
+              title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.people_outline, color: Colors.white70),
+              title: const Text('Invite Friends', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReferralScreen()),
+                ).then((_) => _loadTasks());
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bug_report_outlined, color: Colors.white70),
+              title: const Text('Send Feedback', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _showFeedbackDialog();
+              },
+            ),
+            const Spacer(),
+            const Divider(color: Colors.white24),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+              onTap: () async {
+                Navigator.pop(context);
+                await ApiService().logout();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
       appBar: AppBar(
         title: Row(
           children: [
