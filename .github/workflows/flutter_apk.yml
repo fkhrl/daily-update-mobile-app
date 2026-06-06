@@ -41,51 +41,57 @@ jobs:
             echo "Updated distributionUrl in gradle-wrapper.properties to official services.gradle.org"
           fi
 
-      - name: Configure Android native platform (Internet & Firebase)
+      - name: Write Android config script
         run: |
-          python3 << 'PYEOF'
+          cat > /tmp/configure_android.py << 'PYEOF'
           import os, re, shutil
 
-          # Add Internet permission
+          # ── Internet permission ────────────────────────────────────────
           manifest_path = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(manifest_path):
               with open(manifest_path, 'r') as f:
                   content = f.read()
               if 'android.permission.INTERNET' not in content:
-                  content = content.replace('<application', '<uses-permission android:name="android.permission.INTERNET"/>\n    <application')
+                  content = content.replace(
+                      '<application',
+                      '<uses-permission android:name="android.permission.INTERNET"/>\n    <application'
+                  )
                   with open(manifest_path, 'w') as f:
                       f.write(content)
                   print('Added INTERNET permission.')
 
-          # Add Firebase plugin if google-services.json is present
+          # ── Firebase (only if google-services.json is present) ─────────
           google_json = 'app/google-services.json'
           if os.path.exists(google_json):
               shutil.copy(google_json, 'android/app/google-services.json')
               print('Copied google-services.json.')
 
-              # 1. settings.gradle (modern declarative style)
               settings_path = 'android/settings.gradle'
               if os.path.exists(settings_path):
                   with open(settings_path, 'r') as f:
                       content = f.read()
                   if 'google-services' not in content and 'plugins {' in content:
-                      content = content.replace('plugins {', 'plugins {\n    id "com.google.gms.google-services" version "4.4.1" apply false')
+                      content = content.replace(
+                          'plugins {',
+                          'plugins {\n    id "com.google.gms.google-services" version "4.4.1" apply false'
+                      )
                       with open(settings_path, 'w') as f:
                           f.write(content)
                       print('Added google-services to settings.gradle.')
 
-              # 2. android/build.gradle (traditional buildscript classpath style)
               build_gradle_path = 'android/build.gradle'
               if os.path.exists(build_gradle_path):
                   with open(build_gradle_path, 'r') as f:
                       content = f.read()
                   if 'google-services' not in content and 'dependencies {' in content:
-                      content = content.replace('dependencies {', 'dependencies {\n        classpath "com.google.gms:google-services:4.4.1"')
+                      content = content.replace(
+                          'dependencies {',
+                          'dependencies {\n        classpath "com.google.gms:google-services:4.4.1"'
+                      )
                       with open(build_gradle_path, 'w') as f:
                           f.write(content)
                       print('Added google-services classpath to build.gradle.')
 
-              # 3. android/app/build.gradle (apply plugin)
               app_gradle_path = 'android/app/build.gradle'
               if os.path.exists(app_gradle_path):
                   with open(app_gradle_path, 'r') as f:
@@ -96,60 +102,55 @@ jobs:
                           print('Applied google-services plugin in plugins block.')
                       else:
                           content += '\napply plugin: "com.google.gms.google-services"\n'
-                          print('Appended apply plugin: com.google.gms.google-services at end.')
+                          print('Appended apply plugin at end.')
                       with open(app_gradle_path, 'w') as f:
                           f.write(content)
           else:
-              print('google-services.json not found in app/ — skipping Firebase native config.')
+              print('google-services.json not found — skipping Firebase config.')
 
-          # ---------------------------------------------------------------
-          # CRITICAL FIX: Force compileSdk 35 on ALL subprojects
-          # (including sensors_plus and other Flutter plugins)
-          # by injecting a subprojects block into android/build.gradle
-          # ---------------------------------------------------------------
-          subprojects_block = """
-// Force all plugins (e.g. sensors_plus) to compile with SDK 35
-subprojects {
-    afterEvaluate { proj ->
-        if (proj.hasProperty('android')) {
-            proj.android.compileSdkVersion 35
-            if (proj.android.hasProperty('buildToolsVersion')) {
-                proj.android.buildToolsVersion '35.0.0'
-            }
-        }
-    }
-}
-"""
-          root_build_gradle = 'android/build.gradle'
-          if os.path.exists(root_build_gradle):
-              with open(root_build_gradle, 'r') as f:
+          # ── Force compileSdk 35 on ALL subprojects (sensors_plus fix) ──
+          # Inject a subprojects block into android/build.gradle so that
+          # Flutter plugins like sensors_plus also compile with SDK 35.
+          subprojects_snippet = (
+              '\n// AUTO: Force all plugins to compileSdk 35\n'
+              'subprojects {\n'
+              '    afterEvaluate { proj ->\n'
+              '        if (proj.hasProperty("android")) {\n'
+              '            proj.android.compileSdkVersion 35\n'
+              '        }\n'
+              '    }\n'
+              '}\n'
+          )
+          root_gradle = 'android/build.gradle'
+          if os.path.exists(root_gradle):
+              with open(root_gradle, 'r') as f:
                   content = f.read()
-              if 'subprojects' not in content:
-                  content += subprojects_block
-                  with open(root_build_gradle, 'w') as f:
+              if 'compileSdkVersion 35' not in content:
+                  content += subprojects_snippet
+                  with open(root_gradle, 'w') as f:
                       f.write(content)
-                  print('Injected subprojects compileSdk override into android/build.gradle.')
-              else:
-                  print('subprojects block already present in android/build.gradle.')
+                  print('Injected subprojects compileSdk 35 override.')
               print('--- android/build.gradle ---')
               print(content)
 
-          # Also patch app/build.gradle directly (belt-and-suspenders)
-          app_gradle_path = 'android/app/build.gradle'
-          if os.path.exists(app_gradle_path):
-              with open(app_gradle_path, 'r') as f:
+          # ── Also patch app/build.gradle directly ──────────────────────
+          app_gradle = 'android/app/build.gradle'
+          if os.path.exists(app_gradle):
+              with open(app_gradle, 'r') as f:
                   content = f.read()
               content = re.sub(r'compileSdkVersion\s*=?\s*(flutter\.compileSdkVersion|\d+)', 'compileSdkVersion 35', content)
               content = re.sub(r'compileSdk\s*=?\s*(flutter\.compileSdkVersion|\d+)', 'compileSdk 35', content)
               content = re.sub(r'targetSdkVersion\s*=?\s*(flutter\.targetSdkVersion|\d+)', 'targetSdkVersion 35', content)
               content = re.sub(r'targetSdk\s*=?\s*(flutter\.targetSdkVersion|\d+)', 'targetSdk 35', content)
-              with open(app_gradle_path, 'w') as f:
+              with open(app_gradle, 'w') as f:
                   f.write(content)
-              print('Patched app compileSdk/targetSdk to 35.')
+              print('Patched app/build.gradle compileSdk/targetSdk to 35.')
               print('--- android/app/build.gradle ---')
               print(content)
           PYEOF
 
+      - name: Configure Android native platform (Internet & Firebase)
+        run: python3 /tmp/configure_android.py
 
       - name: Build APK
         env:
