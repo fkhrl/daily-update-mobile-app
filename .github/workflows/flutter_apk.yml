@@ -33,6 +33,14 @@ jobs:
       - name: Generate platform files
         run: flutter create .
 
+      - name: Configure Gradle wrapper distribution URL
+        run: |
+          wrapper_properties="android/gradle/wrapper/gradle-wrapper.properties"
+          if [ -f "$wrapper_properties" ]; then
+            sed -i 's|github.com/gradle/gradle-distributions/releases/download|services.gradle.org/distributions|g' "$wrapper_properties"
+            echo "Updated distributionUrl in gradle-wrapper.properties to official services.gradle.org"
+          fi
+
       - name: Configure Android native platform (Internet & Firebase)
         run: |
           python3 -c "
