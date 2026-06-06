@@ -305,7 +305,31 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Task' : 'New Task', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 24,
+                width: 24,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.assignment_turned_in_outlined,
+                    color: Color(0xFF818CF8),
+                    size: 20,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isEditing ? 'Edit Task' : 'New Task',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF1E1B4B),
       ),
       body: SingleChildScrollView(

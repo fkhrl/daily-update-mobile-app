@@ -347,7 +347,31 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: const Text('TaskDigest', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 32,
+                width: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.assignment_turned_in_outlined,
+                    color: Color(0xFF818CF8),
+                    size: 28,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'TaskDigest',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF1E1B4B),
         actions: [
           IconButton(
