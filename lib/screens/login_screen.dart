@@ -41,7 +41,20 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         setState(() {
-          _errorMessage = response['message'] ?? 'Login failed';
+          if (response['errors'] != null && response['errors'] is Map) {
+            final Map<String, dynamic> errors = response['errors'];
+            final List<String> errorList = [];
+            errors.forEach((key, value) {
+              if (value is List) {
+                errorList.addAll(value.map((e) => e.toString()));
+              } else {
+                errorList.add(value.toString());
+              }
+            });
+            _errorMessage = errorList.join('\n');
+          } else {
+            _errorMessage = response['message'] ?? 'Login failed';
+          }
         });
       }
     } catch (e) {
