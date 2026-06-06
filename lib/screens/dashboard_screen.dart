@@ -342,6 +342,209 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  void _showAiAssistantDialog(BuildContext context) {
+    final textController = TextEditingController();
+    bool isParsing = false;
+    String? dialogError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E293B),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  border: Border(
+                    top: BorderSide(color: Color(0xFF334155), width: 1.5),
+                  ),
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF312E81),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Colors.amberAccent,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'AI & Voice Task Assistant',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Powered by Google Gemini',
+                                style: TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white60),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Describe your task in natural language. You can type it or tap the microphone button on your keyboard to speak it.',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: textController,
+                      style: const TextStyle(color: Colors.white),
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: "e.g., meeting with boss tomorrow at 10 AM priority high category work",
+                        hintStyle: const TextStyle(color: Colors.white30),
+                        filled: true,
+                        fillColor: const Color(0xFF0F172A),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF334155)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF334155)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    if (dialogError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        dialogError!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: isParsing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.auto_awesome, color: Colors.black),
+                      label: Text(
+                        isParsing ? 'AI is processing...' : 'Parse Task with AI',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF818CF8),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: isParsing
+                          ? null
+                          : () async {
+                              final text = textController.text.trim();
+                              if (text.isEmpty) {
+                                setModalState(() {
+                                  dialogError = 'Please enter or dictate a task description.';
+                                });
+                                return;
+                              }
+
+                              setModalState(() {
+                                isParsing = true;
+                                dialogError = null;
+                              });
+
+                              try {
+                                final data = await ApiService().parseTaskWithAi(text);
+                                Navigator.pop(context); // Close sheet
+
+                                // Create dummy Task object with id: 0
+                                final parsedTask = Task(
+                                  id: 0,
+                                  title: data['title'] ?? 'New AI Task',
+                                  description: data['description'] ?? '',
+                                  scheduledAt: DateTime.tryParse(data['scheduled_at'] ?? '') ??
+                                      DateTime.now().add(const Duration(minutes: 10)),
+                                  isInstant: false,
+                                  isNotified: false,
+                                  priority: data['priority'] ?? 'medium',
+                                  category: data['category'] ?? 'personal',
+                                  status: 'pending',
+                                  recurrence: 'none',
+                                  recurrenceInterval: 1,
+                                  reminders: [],
+                                );
+
+                                // Navigate to TaskFormScreen with prefilled task
+                                final result = await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => TaskFormScreen(task: parsedTask),
+                                  ),
+                                );
+                                if (result == true) {
+                                  _loadTasks();
+                                }
+                              } catch (e) {
+                                setModalState(() {
+                                  isParsing = false;
+                                  dialogError = 'Error: $e';
+                                });
+                              }
+                            },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -423,15 +626,30 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     _buildTaskList(_filterTasks(2)),
                   ],
                 ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF6366F1),
-        child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const TaskFormScreen()),
-          );
-          if (result == true) _loadTasks();
-        },
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'ai_btn',
+            backgroundColor: const Color(0xFF818CF8),
+            tooltip: 'AI & Voice Assistant',
+            child: const Icon(Icons.auto_awesome, color: Colors.white),
+            onPressed: () => _showAiAssistantDialog(context),
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton(
+            heroTag: 'add_btn',
+            backgroundColor: const Color(0xFF6366F1),
+            tooltip: 'Add Task Manually',
+            child: const Icon(Icons.add, color: Colors.white),
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TaskFormScreen()),
+              );
+              if (result == true) _loadTasks();
+            },
+          ),
+        ],
       ),
     );
   }

@@ -240,7 +240,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     finalReminders.addAll(_customReminders);
 
     try {
-      if (widget.task == null) {
+      if (widget.task == null || widget.task!.id == 0) {
         // Create new task
         await ApiService().createTask(
           _titleController.text.trim(),

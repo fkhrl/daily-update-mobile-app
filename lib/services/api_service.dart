@@ -222,4 +222,21 @@ class ApiService {
     );
     return jsonDecode(response.body);
   }
+
+  Future<Map<String, dynamic>> parseTaskWithAi(String text) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/ai/parse-task'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'text': text,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data['data'];
+    }
+    throw Exception(data['message'] ?? 'Failed to parse task with AI');
+  }
 }
