@@ -66,6 +66,7 @@ jobs:
               shutil.copy(google_json, 'android/app/google-services.json')
               print('Copied google-services.json.')
 
+              # settings.gradle (Groovy)
               settings_path = 'android/settings.gradle'
               if os.path.exists(settings_path):
                   with open(settings_path, 'r') as f:
@@ -79,6 +80,21 @@ jobs:
                           f.write(content)
                       print('Added google-services to settings.gradle.')
 
+              # settings.gradle.kts (Kotlin)
+              settings_kts_path = 'android/settings.gradle.kts'
+              if os.path.exists(settings_kts_path):
+                  with open(settings_kts_path, 'r') as f:
+                      content = f.read()
+                  if 'google-services' not in content and 'plugins {' in content:
+                      content = content.replace(
+                          'plugins {',
+                          'plugins {\n    id("com.google.gms.google-services") version "4.4.1" apply false'
+                      )
+                      with open(settings_kts_path, 'w') as f:
+                          f.write(content)
+                      print('Added google-services to settings.gradle.kts.')
+
+              # build.gradle (Groovy)
               build_gradle_path = 'android/build.gradle'
               if os.path.exists(build_gradle_path):
                   with open(build_gradle_path, 'r') as f:
@@ -92,6 +108,7 @@ jobs:
                           f.write(content)
                       print('Added google-services classpath to build.gradle.')
 
+              # app/build.gradle (Groovy)
               app_gradle_path = 'android/app/build.gradle'
               if os.path.exists(app_gradle_path):
                   with open(app_gradle_path, 'r') as f:
@@ -105,6 +122,20 @@ jobs:
                           print('Appended apply plugin at end.')
                       with open(app_gradle_path, 'w') as f:
                           f.write(content)
+
+              # app/build.gradle.kts (Kotlin)
+              app_gradle_kts_path = 'android/app/build.gradle.kts'
+              if os.path.exists(app_gradle_kts_path):
+                  with open(app_gradle_kts_path, 'r') as f:
+                      content = f.read()
+                  if 'google-services' not in content and 'plugins {' in content:
+                      content = content.replace(
+                          'plugins {',
+                          'plugins {\n    id("com.google.gms.google-services")'
+                      )
+                      with open(app_gradle_kts_path, 'w') as f:
+                          f.write(content)
+                      print('Applied google-services plugin in plugins block in app/build.gradle.kts.')
           else:
               print('google-services.json not found — skipping Firebase config.')
 
@@ -133,6 +164,42 @@ jobs:
               print('--- android/build.gradle ---')
               print(content)
 
+          # build.gradle.kts (Kotlin)
+          subprojects_kts_snippet = (
+              '\n// AUTO: Force all plugins to compileSdk 35\n'
+              'subprojects {\n'
+              '    afterEvaluate {\n'
+              '        val android = project.extensions.findByName("android")\n'
+              '        if (android != null) {\n'
+              '            try {\n'
+              '                val method = android::class.java.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)\n'
+              '                method.invoke(android, 35)\n'
+              '                println("Set compileSdkVersion to 35 for project: ${project.name}")\n'
+              '            } catch (e: Exception) {\n'
+              '                try {\n'
+              '                    val method = android::class.java.getMethod("setCompileSdk", java.lang.Integer::class.java)\n'
+              '                    method.invoke(android, 35)\n'
+              '                    println("Set compileSdk to 35 for project: ${project.name}")\n'
+              '                } catch (e2: Exception) {\n'
+              '                    println("Failed to set compileSdk for project: ${project.name}: ${e2.message}")\n'
+              '                }\n'
+              '            }\n'
+              '        }\n'
+              '    }\n'
+              '}\n'
+          )
+          root_gradle_kts = 'android/build.gradle.kts'
+          if os.path.exists(root_gradle_kts):
+              with open(root_gradle_kts, 'r') as f:
+                  content = f.read()
+              if 'compileSdkVersion' not in content and 'compileSdk' not in content:
+                  content += subprojects_kts_snippet
+                  with open(root_gradle_kts, 'w') as f:
+                      f.write(content)
+                  print('Injected subprojects compileSdk 35 override to build.gradle.kts.')
+              print('--- android/build.gradle.kts ---')
+              print(content)
+
           # ── Also patch app/build.gradle directly ──────────────────────
           app_gradle = 'android/app/build.gradle'
           if os.path.exists(app_gradle):
@@ -146,6 +213,19 @@ jobs:
                   f.write(content)
               print('Patched app/build.gradle compileSdk/targetSdk to 35.')
               print('--- android/app/build.gradle ---')
+              print(content)
+
+          # app/build.gradle.kts (Kotlin)
+          app_gradle_kts = 'android/app/build.gradle.kts'
+          if os.path.exists(app_gradle_kts):
+              with open(app_gradle_kts, 'r') as f:
+                  content = f.read()
+              content = re.sub(r'compileSdk\s*=\s*(flutter\.compileSdkVersion|\d+)', 'compileSdk = 35', content)
+              content = re.sub(r'targetSdk\s*=\s*(flutter\.targetSdkVersion|\d+)', 'targetSdk = 35', content)
+              with open(app_gradle_kts, 'w') as f:
+                  f.write(content)
+              print('Patched app/build.gradle.kts compileSdk/targetSdk to 35.')
+              print('--- android/app/build.gradle.kts ---')
               print(content)
           PYEOF
 

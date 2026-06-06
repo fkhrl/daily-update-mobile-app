@@ -1,0 +1,46 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+val newBuildDir: Directory =
+    rootProject.layout.buildDirectory
+        .dir("../../build")
+        .get()
+rootProject.layout.buildDirectory.value(newBuildDir)
+
+subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
+}
+
+// AUTO: Force all plugins to compileSdk 35
+subprojects {
+    afterEvaluate {
+        val android = project.extensions.findByName("android")
+        if (android != null) {
+            try {
+                val method = android::class.java.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
+                method.invoke(android, 35)
+                println("Set compileSdkVersion to 35 for project: ${project.name}")
+            } catch (e: Exception) {
+                try {
+                    val method = android::class.java.getMethod("setCompileSdk", java.lang.Integer::class.java)
+                    method.invoke(android, 35)
+                    println("Set compileSdk to 35 for project: ${project.name}")
+                } catch (e2: Exception) {
+                    println("Failed to set compileSdk for project: ${project.name}: ${e2.message}")
+                }
+            }
+        }
+    }
+}
