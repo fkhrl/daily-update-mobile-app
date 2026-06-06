@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shake/shake.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'task_form_screen.dart';
 import 'referral_screen.dart';
 import 'feedback_dialog.dart';
+import 'focus_mode_screen.dart';
+import 'habits_screen.dart';
+import 'notes_screen.dart';
+import 'ai_planner_screen.dart';
+import 'workspace_screen.dart';
+import 'profile_screen.dart';
+import 'subscription_screen.dart';
+import 'leaderboard_screen.dart';
+import 'walkthrough_overlay.dart';
+
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -22,16 +33,28 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   String? _errorMessage;
   ShakeDetector? _shakeDetector;
 
+  bool _showWalkthrough = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadTasks();
+    _checkWalkthrough();
     _shakeDetector = ShakeDetector.autoStart(
       onPhoneShake: () {
         _showFeedbackDialog();
       },
     );
+  }
+
+  void _checkWalkthrough() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('walkthrough_shown') ?? false;
+    if (!shown) {
+      setState(() => _showWalkthrough = true);
+      prefs.setBool('walkthrough_shown', true);
+    }
   }
 
   void _showFeedbackDialog() {
@@ -321,11 +344,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         const SizedBox(width: 12),
                       ],
                       if (task.subtasks.isNotEmpty) ...[
-                        const Icon(Icons.checklist, color: Colors.emeraldAccent, size: 14),
+                        const Icon(Icons.checklist, color: Color(0xFF10B981), size: 14),
                         const SizedBox(width: 4),
                         Text(
                           '${task.completionPercentage}% checklist',
-                          style: const TextStyle(color: Colors.emeraldAccent, fontSize: 11),
+                          style: const TextStyle(color: Color(0xFF10B981), fontSize: 11),
                         ),
                       ],
                     ],
@@ -337,7 +360,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       child: LinearProgressIndicator(
                         value: task.completionPercentage / 100,
                         backgroundColor: Colors.white12,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.emeraldAccent),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
                         minHeight: 3,
                       ),
                     ),
@@ -629,6 +652,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                   recurrence: 'none',
                                   recurrenceInterval: 1,
                                   reminders: [],
+                                  position: 0,
+                                  completionPercentage: 0,
+                                  subtasks: [],
                                 );
 
                                 // Navigate to TaskFormScreen with prefilled task
@@ -660,194 +686,294 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      drawer: Drawer(
-        backgroundColor: const Color(0xFF0F172A),
-        child: Column(
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E1B4B),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        height: 50,
-                        width: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.assignment_turned_in_outlined,
-                            color: Color(0xFF818CF8),
-                            size: 40,
-                          );
-                        },
-                      ),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFF0F172A),
+          drawer: Drawer(
+            backgroundColor: const Color(0xFF0F172A),
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1E1B4B),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            height: 50,
+                            width: 50,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.assignment_turned_in_outlined,
+                                color: Color(0xFF818CF8),
+                                size: 40,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'TaskDigest',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'TaskDigest',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.dashboard_outlined, color: Colors.white70),
+                  title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.timer_outlined, color: Colors.white70),
+                  title: const Text('Focus Mode (Pomodoro)', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FocusModeScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.local_fire_department_outlined, color: Colors.white70),
+                  title: const Text('Habit Tracker', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HabitsScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.note_alt_outlined, color: Colors.white70),
+                  title: const Text('Journal & Notes', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotesScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome, color: Colors.white70),
+                  title: const Text('AI Planner Recommendations', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AiPlannerScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.group_work_outlined, color: Colors.white70),
+                  title: const Text('Team Shared Workspaces', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WorkspaceScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.emoji_events_outlined, color: Colors.white70),
+                  title: const Text('Leaderboard & Badges', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.card_membership, color: Colors.amberAccent),
+                  title: const Text('Premium & Export Backups', style: TextStyle(color: Colors.amberAccent)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                    ).then((_) => _loadTasks());
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white70),
+                  title: const Text('Security & Profile Settings', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.people_outline, color: Colors.white70),
+                  title: const Text('Invite Friends', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ReferralScreen()),
+                    ).then((_) => _loadTasks());
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.bug_report_outlined, color: Colors.white70),
+                  title: const Text('Send Feedback', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showFeedbackDialog();
+                  },
+                ),
+                const Divider(color: Colors.white24),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.redAccent),
+                  title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await ApiService().logout();
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+          appBar: AppBar(
+            title: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 32,
+                    width: 32,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.assignment_turned_in_outlined,
+                        color: Color(0xFF818CF8),
+                        size: 28,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'TaskDigest',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E1B4B),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.email_outlined, color: Color(0xFF818CF8)),
+                tooltip: 'Trigger Notification Mailer',
+                onPressed: _triggerTestEmail,
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.dashboard_outlined, color: Colors.white70),
-              title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.people_outline, color: Colors.white70),
-              title: const Text('Invite Friends', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ReferralScreen()),
-                ).then((_) => _loadTasks());
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bug_report_outlined, color: Colors.white70),
-              title: const Text('Send Feedback', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                _showFeedbackDialog();
-              },
-            ),
-            const Spacer(),
-            const Divider(color: Colors.white24),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.redAccent),
-              title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () async {
-                Navigator.pop(context);
-                await ApiService().logout();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-      appBar: AppBar(
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                'assets/images/logo.png',
-                height: 32,
-                width: 32,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.assignment_turned_in_outlined,
-                    color: Color(0xFF818CF8),
-                    size: 28,
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () async {
+                  await ApiService().logout();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );
                 },
               ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: const Color(0xFF6366F1),
+              tabs: const [
+                Tab(text: 'Today'),
+                Tab(text: 'Tomorrow'),
+                Tab(text: 'Future'),
+              ],
             ),
-            const SizedBox(width: 10),
-            const Text(
-              'TaskDigest',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1E1B4B),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.email_outlined, color: Color(0xFF818CF8)),
-            tooltip: 'Trigger Notification Mailer',
-            onPressed: _triggerTestEmail,
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ApiService().logout();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+              : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadTasks,
+                            child: const Text('Retry'),
+                          )
+                        ],
+                      ),
+                    )
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildTaskList(_filterTasks(0)),
+                        _buildTaskList(_filterTasks(1)),
+                        _buildTaskList(_filterTasks(2)),
+                      ],
+                    ),
+          floatingActionButton: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FloatingActionButton(
+                heroTag: 'ai_btn',
+                backgroundColor: const Color(0xFF818CF8),
+                tooltip: 'AI & Voice Assistant',
+                child: const Icon(Icons.auto_awesome, color: Colors.white),
+                onPressed: () => _showAiAssistantDialog(context),
+              ),
+              const SizedBox(width: 16),
+              FloatingActionButton(
+                heroTag: 'add_btn',
+                backgroundColor: const Color(0xFF6366F1),
+                tooltip: 'Add Task Manually',
+                child: const Icon(Icons.add, color: Colors.white),
+                onPressed: () async {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const TaskFormScreen()),
+                  );
+                  if (result == true) _loadTasks();
+                },
+              ),
+            ],
+          ),
+        ),
+        if (_showWalkthrough)
+          WalkthroughOverlay(
+            onDismissed: () {
+              setState(() {
+                _showWalkthrough = false;
+              });
             },
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFF6366F1),
-          tabs: const [
-            Tab(text: 'Today'),
-            Tab(text: 'Tomorrow'),
-            Tab(text: 'Future'),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
-          : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadTasks,
-                        child: const Text('Retry'),
-                      )
-                    ],
-                  ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildTaskList(_filterTasks(0)),
-                    _buildTaskList(_filterTasks(1)),
-                    _buildTaskList(_filterTasks(2)),
-                  ],
-                ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'ai_btn',
-            backgroundColor: const Color(0xFF818CF8),
-            tooltip: 'AI & Voice Assistant',
-            child: const Icon(Icons.auto_awesome, color: Colors.white),
-            onPressed: () => _showAiAssistantDialog(context),
-          ),
-          const SizedBox(width: 16),
-          FloatingActionButton(
-            heroTag: 'add_btn',
-            backgroundColor: const Color(0xFF6366F1),
-            tooltip: 'Add Task Manually',
-            child: const Icon(Icons.add, color: Colors.white),
-            onPressed: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TaskFormScreen()),
-              );
-              if (result == true) _loadTasks();
-            },
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

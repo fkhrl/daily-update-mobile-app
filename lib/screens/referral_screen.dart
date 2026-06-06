@@ -123,7 +123,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                               Text(
                                 '$rewardPoints pts',
                                 style: const TextStyle(
-                                  color: Colors.emeraldAccent,
+                                  color: Color(0xFF10B981),
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -10,12 +11,42 @@ void main() async {
   
   try {
     // Initialize Firebase
-    await Firebase.initializeApp();
+    if (Firebase.apps.isEmpty) {
+      FirebaseOptions options;
+      if (kIsWeb) {
+        options = const FirebaseOptions(
+          apiKey: "AIzaSyAlRE3DokRheJytePJH7BSkTbz8qJA5_7Y", // Browser key
+          appId: "1:925566632947:web:73d69f019d92ffbf714886",
+          messagingSenderId: "925566632947",
+          projectId: "daily-update-app-2ff4c",
+          storageBucket: "daily-update-app-2ff4c.firebasestorage.app",
+        );
+      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+        options = const FirebaseOptions(
+          apiKey: "AIzaSyApPCUo-pVplIS0BGmVHmGqnU2anSmOozg", // iOS key
+          appId: "1:925566632947:ios:3bcb8a4c2ab847fa714886",
+          messagingSenderId: "925566632947",
+          projectId: "daily-update-app-2ff4c",
+          storageBucket: "daily-update-app-2ff4c.firebasestorage.app",
+          iosBundleId: "com.example.dailyUpdateApp",
+        );
+      } else {
+        // Android fallback configuration
+        options = const FirebaseOptions(
+          apiKey: "AIzaSyDzsIyWzKZi5OmxVolgUtDfzLvc-H1eCyc", // Android key
+          appId: "1:925566632947:android:73d69f019d92ffbf714886",
+          messagingSenderId: "925566632947",
+          projectId: "daily-update-app-2ff4c",
+          storageBucket: "daily-update-app-2ff4c.firebasestorage.app",
+        );
+      }
+      await Firebase.initializeApp(options: options);
+    }
     // Initialize Push Notifications
     await NotificationService().initialize();
-  } catch (e) {
+  } catch (e, stackTrace) {
     // Fallback if Firebase config is missing or not fully initialized
-    debugPrint("Firebase init failed: $e");
+    debugPrint("Firebase init failed: $e\n$stackTrace");
   }
 
   runApp(const MyApp());

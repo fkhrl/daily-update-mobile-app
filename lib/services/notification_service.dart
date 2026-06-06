@@ -56,7 +56,9 @@ class NotificationService {
       }
 
       // 2. Set background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      }
 
       // 3. Handle foreground notifications
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
