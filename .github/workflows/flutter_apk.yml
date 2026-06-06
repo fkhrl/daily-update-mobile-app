@@ -57,8 +57,9 @@ jobs:
                   print('Added INTERNET permission.')
           
           # Add Firebase plugin if google-services.json is present
-          if os.path.exists('google-services.json'):
-              shutil.copy('google-services.json', 'android/app/google-services.json')
+          google_json = 'app/google-services.json'
+          if os.path.exists(google_json):
+              shutil.copy(google_json, 'android/app/google-services.json')
               print('Copied google-services.json.')
               
               # 1. settings.gradle (modern declarative style)
@@ -98,7 +99,7 @@ jobs:
                       with open(app_gradle_path, 'w') as f:
                           f.write(content)
           else:
-              print('google-services.json not found in root, skipping Firebase native config.')
+              print('google-services.json not found in app/ directory, skipping Firebase native config.')
           "
 
 
