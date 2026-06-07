@@ -15,11 +15,11 @@ class Subtask {
 
   factory Subtask.fromJson(Map<String, dynamic> json) {
     return Subtask(
-      id: json['id'] ?? 0,
-      taskId: json['task_id'] ?? 0,
-      title: json['title'] ?? '',
-      isCompleted: json['is_completed'] == 1 || json['is_completed'] == true,
-      position: json['position'] ?? 0,
+      id: int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+      taskId: int.tryParse(json['task_id']?.toString() ?? '0') ?? 0,
+      title: json['title']?.toString() ?? '',
+      isCompleted: json['is_completed'] == 1 || json['is_completed'] == '1' || json['is_completed'] == true,
+      position: int.tryParse(json['position']?.toString() ?? '0') ?? 0,
     );
   }
 
@@ -71,24 +71,24 @@ class Task {
 
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      scheduledAt: DateTime.parse(json['scheduled_at']),
-      isInstant: json['is_instant'] == 1 || json['is_instant'] == true,
-      isNotified: json['is_notified'] == 1 || json['is_notified'] == true,
-      priority: json['priority'] ?? 'medium',
-      category: json['category'] ?? 'personal',
-      status: json['status'] ?? 'pending',
-      recurrence: json['recurrence'] ?? 'none',
-      recurrenceInterval: json['recurrence_interval'] ?? 1,
+      id: int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString(),
+      scheduledAt: DateTime.parse(json['scheduled_at'] ?? DateTime.now().toIso8601String()),
+      isInstant: json['is_instant'] == 1 || json['is_instant'] == '1' || json['is_instant'] == true,
+      isNotified: json['is_notified'] == 1 || json['is_notified'] == '1' || json['is_notified'] == true,
+      priority: json['priority']?.toString() ?? 'medium',
+      category: json['category']?.toString() ?? 'personal',
+      status: json['status']?.toString() ?? 'pending',
+      recurrence: json['recurrence']?.toString() ?? 'none',
+      recurrenceInterval: int.tryParse(json['recurrence_interval']?.toString() ?? '1') ?? 1,
       reminders: json['reminders'] != null
           ? (json['reminders'] as List)
-              .map((r) => DateTime.parse(r['remind_at'] ?? r['reminders'] ?? ''))
+              .map((r) => DateTime.parse(r['remind_at']?.toString() ?? r['reminders']?.toString() ?? ''))
               .toList()
           : [],
-      position: json['position'] ?? 0,
-      completionPercentage: json['completion_percentage'] ?? 0,
+      position: int.tryParse(json['position']?.toString() ?? '0') ?? 0,
+      completionPercentage: int.tryParse(json['completion_percentage']?.toString() ?? '0') ?? 0,
       subtasks: json['subtasks'] != null
           ? (json['subtasks'] as List).map((s) => Subtask.fromJson(s)).toList()
           : [],
