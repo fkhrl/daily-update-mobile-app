@@ -217,9 +217,11 @@ jobs:
               content = re.sub(r'compileSdk\s*=?\s*(flutter\.compileSdkVersion|\d+)', 'compileSdk 35', content)
               content = re.sub(r'targetSdkVersion\s*=?\s*(flutter\.targetSdkVersion|\d+)', 'targetSdkVersion 35', content)
               content = re.sub(r'targetSdk\s*=?\s*(flutter\.targetSdkVersion|\d+)', 'targetSdk 35', content)
+              content = re.sub(r'minSdkVersion\s*=?\s*(flutter\.minSdkVersion|\d+)', 'minSdkVersion 24', content)
+              content = re.sub(r'minSdk\s*=?\s*(flutter\.minSdkVersion|\d+)', 'minSdk 24', content)
               with open(app_gradle, 'w') as f:
                   f.write(content)
-              print('Patched app/build.gradle compileSdk/targetSdk to 35.')
+              print('Patched app/build.gradle compileSdk/targetSdk to 35 and minSdk to 24.')
               print('--- android/app/build.gradle ---')
               print(content)
 
@@ -230,9 +232,10 @@ jobs:
                   content = f.read()
               content = re.sub(r'compileSdk\s*=\s*(flutter\.compileSdkVersion|\d+)', 'compileSdk = 35', content)
               content = re.sub(r'targetSdk\s*=\s*(flutter\.targetSdkVersion|\d+)', 'targetSdk = 35', content)
+              content = re.sub(r'minSdk\s*=\s*(flutter\.minSdkVersion|\d+)', 'minSdk = 24', content)
               with open(app_gradle_kts, 'w') as f:
                   f.write(content)
-              print('Patched app/build.gradle.kts compileSdk/targetSdk to 35.')
+              print('Patched app/build.gradle.kts compileSdk/targetSdk to 35 and minSdk to 24.')
               print('--- android/app/build.gradle.kts ---')
               print(content)
           PYEOF
