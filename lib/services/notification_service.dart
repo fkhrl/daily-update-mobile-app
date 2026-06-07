@@ -1,7 +1,17 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel', // id
+  'High Importance Notifications', // name
+  description: 'This channel is used for important notifications.',
+  importance: Importance.max,
+);
 
 // Background message handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -55,6 +65,23 @@ class NotificationService {
         print('User granted permission: ${settings.authorizationStatus}');
       }
 
+      // Initialize local notifications
+      if (!kIsWeb) {
+        const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+        const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+        await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+        await flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(channel);
+
+        await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      }
+
       // 2. Set background message handler
       if (!kIsWeb) {
         FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -65,7 +92,25 @@ class NotificationService {
         if (kDebugMode) {
           print('Foreground message received: ${message.notification?.title}');
         }
-        // You could trigger a local notification package here to show a banner in foreground
+        
+        RemoteNotification? notification = message.notification;
+        AndroidNotification? android = message.notification?.android;
+
+        if (notification != null && android != null && !kIsWeb) {
+          flutterLocalNotificationsPlugin.show(
+            notification.hashCode,
+            notification.title,
+            notification.body,
+            NotificationDetails(
+              android: AndroidNotificationDetails(
+                channel.id,
+                channel.name,
+                channelDescription: channel.description,
+                icon: '@mipmap/ic_launcher',
+              ),
+            ),
+          );
+        }
       });
 
       // 4. Handle notification clicks when app is opened from a terminated or background state

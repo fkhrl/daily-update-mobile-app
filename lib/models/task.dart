@@ -69,12 +69,20 @@ class Task {
     required this.subtasks,
   });
 
+  static DateTime _parseDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return DateTime.now();
+    if (!dateStr.endsWith('Z') && !dateStr.contains('+') && !dateStr.contains(RegExp(r'-[0-9]{2}:[0-9]{2}$'))) {
+      dateStr = dateStr.replaceAll(' ', 'T') + 'Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
+
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
       id: int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
-      scheduledAt: DateTime.parse(json['scheduled_at'] ?? DateTime.now().toIso8601String()),
+      scheduledAt: _parseDate(json['scheduled_at']?.toString()),
       isInstant: json['is_instant'] == 1 || json['is_instant'] == '1' || json['is_instant'] == true,
       isNotified: json['is_notified'] == 1 || json['is_notified'] == '1' || json['is_notified'] == true,
       priority: json['priority']?.toString() ?? 'medium',
@@ -84,7 +92,7 @@ class Task {
       recurrenceInterval: int.tryParse(json['recurrence_interval']?.toString() ?? '1') ?? 1,
       reminders: json['reminders'] != null
           ? (json['reminders'] as List)
-              .map((r) => DateTime.parse(r['remind_at']?.toString() ?? r['reminders']?.toString() ?? ''))
+              .map((r) => _parseDate(r['remind_at']?.toString() ?? r['reminders']?.toString()))
               .toList()
           : [],
       position: int.tryParse(json['position']?.toString() ?? '0') ?? 0,

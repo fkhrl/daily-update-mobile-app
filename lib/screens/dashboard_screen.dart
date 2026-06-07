@@ -32,7 +32,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   List<Task> _tasks = [];
   bool _isLoading = false;
   String? _errorMessage;
-  ShakeDetector? _shakeDetector;
 
   bool _showWalkthrough = false;
 
@@ -42,11 +41,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     _tabController = TabController(length: 3, vsync: this);
     _loadTasks();
     _checkWalkthrough();
-    _shakeDetector = ShakeDetector.autoStart(
-      onPhoneShake: () {
-        _showFeedbackDialog();
-      },
-    );
   }
 
   void _checkWalkthrough() async {
@@ -68,7 +62,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   @override
   void dispose() {
     _tabController.dispose();
-    _shakeDetector?.stopListening();
     super.dispose();
   }
 
