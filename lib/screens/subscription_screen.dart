@@ -5,7 +5,7 @@ import '../services/api_service.dart';
 import '../models/user.dart';
 
 class SubscriptionScreen extends StatefulWidget {
-  const SubscriptionScreen({Key? key}) : super(key: key);
+  const SubscriptionScreen({super.key});
 
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
@@ -103,7 +103,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: (isPremium ? Colors.amber : Colors.indigoAccent).withOpacity(0.25),
+                          color: (isPremium ? Colors.amber : Colors.indigoAccent).withValues(alpha: 0.25),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         )
@@ -128,7 +128,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
@@ -167,7 +167,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
-                                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))
                                 ],
                               ),
                               child: _isUpgrading
@@ -183,7 +183,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             alignment: Alignment.center,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
@@ -200,9 +200,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   // 2. Data Exports & Cloud Backups
                   Text('Cloud Backups & Local Exports', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.indigoAccent)),
                   const SizedBox(height: 5),
-                  Text(
+                  const Text(
                     'Export your checklist logs to keep offline records or print details.',
-                    style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 12),
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                   ),
                   const SizedBox(height: 15),
 
@@ -256,7 +256,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B).withOpacity(0.5),
+          color: const Color(0xFF1E293B).withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFF1E293B)),
         ),

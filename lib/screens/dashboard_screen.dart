@@ -17,10 +17,11 @@ import 'profile_screen.dart';
 import 'subscription_screen.dart';
 import 'leaderboard_screen.dart';
 import 'walkthrough_overlay.dart';
+import '../widgets/ai_assistant_bottom_sheet.dart';
 
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -247,8 +248,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             task.status != 'completed' &&
             task.status != 'cancelled';
         final cardBorder = isOverdue
-            ? BorderSide(color: Colors.redAccent.withOpacity(0.8), width: 1.8)
-            : BorderSide(color: priorityColor.withOpacity(0.3), width: 1);
+            ? BorderSide(color: Colors.redAccent.withValues(alpha: 0.8), width: 1.8)
+            : BorderSide(color: priorityColor.withValues(alpha: 0.3), width: 1);
 
         return Dismissible(
           key: Key(task.id.toString()),
@@ -304,7 +305,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: priorityColor.withOpacity(0.5),
+                          color: priorityColor.withValues(alpha: 0.5),
                           blurRadius: 4,
                           spreadRadius: 1,
                         )
@@ -386,9 +387,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.redAccent.withOpacity(0.2),
+                                color: Colors.redAccent.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                               ),
                               child: const Text(
                                 'OVERDUE ⚠️',
@@ -409,7 +410,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               margin: const EdgeInsets.only(right: 8),
                               decoration: BoxDecoration(
-                                color: Colors.purple.withOpacity(0.2),
+                                color: Colors.purple.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -427,9 +428,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             margin: const EdgeInsets.only(right: 8),
                             decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.15),
+                              color: statusColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
+                              border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1),
                             ),
                             child: Text(
                               task.status.replaceAll('_', ' ').toUpperCase(),
@@ -444,7 +445,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: task.isNotified ? Colors.green.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
+                              color: task.isNotified ? Colors.green.withValues(alpha: 0.2) : Colors.amber.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -479,208 +480,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   void _showAiAssistantDialog(BuildContext context) {
-    final textController = TextEditingController();
-    bool isParsing = false;
-    String? dialogError;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1E293B),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                  border: Border(
-                    top: BorderSide(color: Color(0xFF334155), width: 1.5),
-                  ),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF312E81),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.auto_awesome,
-                            color: Colors.amberAccent,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'AI & Voice Task Assistant',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Powered by Google Gemini',
-                                style: TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white60),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Describe your task in natural language. You can type it or tap the microphone button on your keyboard to speak it.',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: textController,
-                      style: const TextStyle(color: Colors.white),
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: "e.g., meeting with boss tomorrow at 10 AM priority high category work",
-                        hintStyle: const TextStyle(color: Colors.white30),
-                        filled: true,
-                        fillColor: const Color(0xFF0F172A),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF334155)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF334155)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-                        ),
-                      ),
-                    ),
-                    if (dialogError != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        dialogError!,
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      icon: isParsing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                color: Colors.black,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Icon(Icons.auto_awesome, color: Colors.black),
-                      label: Text(
-                        isParsing ? 'AI is processing...' : 'Parse Task with AI',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF818CF8),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: isParsing
-                          ? null
-                          : () async {
-                              final text = textController.text.trim();
-                              if (text.isEmpty) {
-                                setModalState(() {
-                                  dialogError = 'Please enter or dictate a task description.';
-                                });
-                                return;
-                              }
-
-                              setModalState(() {
-                                isParsing = true;
-                                dialogError = null;
-                              });
-
-                              try {
-                                final data = await ApiService().parseTaskWithAi(text);
-                                Navigator.pop(context); // Close sheet
-
-                                // Create dummy Task object with id: 0
-                                final parsedTask = Task(
-                                  id: 0,
-                                  title: data['title'] ?? 'New AI Task',
-                                  description: data['description'] ?? '',
-                                  scheduledAt: DateTime.tryParse(data['scheduled_at'] ?? '') ??
-                                      DateTime.now().add(const Duration(minutes: 10)),
-                                  isInstant: false,
-                                  isNotified: false,
-                                  priority: data['priority'] ?? 'medium',
-                                  category: data['category'] ?? 'personal',
-                                  status: 'pending',
-                                  recurrence: 'none',
-                                  recurrenceInterval: 1,
-                                  reminders: [],
-                                  position: 0,
-                                  completionPercentage: 0,
-                                  subtasks: [],
-                                );
-
-                                // Navigate to TaskFormScreen with prefilled task
-                                final result = await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => TaskFormScreen(task: parsedTask),
-                                  ),
-                                );
-                                if (result == true) {
-                                  _loadTasks();
-                                }
-                              } catch (e) {
-                                setModalState(() {
-                                  isParsing = false;
-                                  dialogError = 'Error: $e';
-                                });
-                              }
-                            },
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (context) => AiAssistantBottomSheet(onTaskCreated: _loadTasks),
     );
   }
 

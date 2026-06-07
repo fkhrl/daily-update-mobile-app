@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 
 class AiPlannerScreen extends StatefulWidget {
-  const AiPlannerScreen({Key? key}) : super(key: key);
+  const AiPlannerScreen({super.key});
 
   @override
   State<AiPlannerScreen> createState() => _AiPlannerScreenState();
@@ -100,14 +100,14 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B).withOpacity(0.4),
+                        color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Text('No pending tasks to rank. Create some tasks first!', style: TextStyle(color: Color(0xFF94A3B8))),
                     )
                   else
                     ..._recommendations.map((item) => Card(
-                          color: const Color(0xFF1E293B).withOpacity(0.5),
+                          color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                           margin: const EdgeInsets.only(bottom: 8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -151,7 +151,7 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.4),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
@@ -201,7 +201,7 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
                                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                                 margin: const EdgeInsets.only(bottom: 6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A).withOpacity(0.5),
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
@@ -237,7 +237,7 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
                           margin: const EdgeInsets.only(right: 12),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B).withOpacity(0.5),
+                            color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: const Color(0xFF1E293B)),
                           ),
@@ -280,9 +280,9 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1B4B).withOpacity(0.4),
+                        color: const Color(0xFF1E1B4B).withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.indigoAccent.withOpacity(0.2)),
+                        border: Border.all(color: Colors.indigoAccent.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

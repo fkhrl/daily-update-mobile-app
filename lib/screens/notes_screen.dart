@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 
 class NotesScreen extends StatefulWidget {
   final int? taskId;
-  const NotesScreen({Key? key, this.taskId}) : super(key: key);
+  const NotesScreen({super.key, this.taskId});
 
   @override
   State<NotesScreen> createState() => _NotesScreenState();
@@ -144,7 +144,7 @@ class _NotesScreenState extends State<NotesScreen> {
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B).withOpacity(0.5),
+              color: const Color(0xFF1E293B).withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF1E293B)),
             ),
@@ -155,9 +155,9 @@ class _NotesScreenState extends State<NotesScreen> {
                   controller: _noteContentController,
                   maxLines: 3,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: 'Write notes here... (Use # for title, - for list)',
-                    hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                    hintStyle: TextStyle(color: Color(0xFF64748B)),
                     border: InputBorder.none,
                   ),
                 ),
@@ -169,7 +169,7 @@ class _NotesScreenState extends State<NotesScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: Colors.indigoAccent.withOpacity(0.15),
+                      color: Colors.indigoAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -291,7 +291,7 @@ class _NotesScreenState extends State<NotesScreen> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B).withOpacity(0.4),
+                              color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: const Color(0xFF1E293B)),
                             ),
@@ -301,9 +301,9 @@ class _NotesScreenState extends State<NotesScreen> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Journal Entry',
-                                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                      style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
                                     ),
                                     IconButton(
                                       onPressed: () => _deleteNote(note['id']),
@@ -327,11 +327,11 @@ class _NotesScreenState extends State<NotesScreen> {
                                       color: const Color(0xFF0F172A),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: Row(
+                                    child: const Row(
                                       children: [
-                                        const Icon(Icons.play_circle_fill, color: Colors.indigoAccent, size: 24),
-                                        const SizedBox(width: 8),
-                                        Text('Play voice note attachment', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                                        Icon(Icons.play_circle_fill, color: Colors.indigoAccent, size: 24),
+                                        SizedBox(width: 8),
+                                        Text('Play voice note attachment', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
                                       ],
                                     ),
                                   ),

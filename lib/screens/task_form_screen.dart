@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 class TaskFormScreen extends StatefulWidget {
   final Task? task;
 
-  const TaskFormScreen({Key? key, this.task}) : super(key: key);
+  const TaskFormScreen({super.key, this.task});
 
   @override
   State<TaskFormScreen> createState() => _TaskFormScreenState();
@@ -356,9 +356,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.1),
+                    color: Colors.redAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     _errorMessage!,
@@ -688,7 +688,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             ],
                           ),
                         );
-                      }).toList(),
+                      }),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
                         onPressed: () => _addCustomReminder(context),
@@ -813,7 +813,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   title: const Text('Instant Notification', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   subtitle: const Text('Send email and push notification immediately', style: TextStyle(color: Colors.white70, fontSize: 12)),
                   value: _isInstant,
-                  activeColor: const Color(0xFF6366F1),
+                  activeThumbColor: const Color(0xFF6366F1),
                   onChanged: (bool value) {
                     setState(() {
                       _isInstant = value;

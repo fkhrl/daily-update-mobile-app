@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../utils/ui_helpers.dart';
 
 class HabitsScreen extends StatefulWidget {
   const HabitsScreen({Key? key}) : super(key: key);
@@ -73,7 +74,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       Navigator.pop(context);
       _showSnackbar('Habit created successfully!');
     } catch (e) {
-      _showSnackbar('Failed to create habit: $e');
+      UIHelpers.showErrorDialog(context, 'Creation Failed', e);
     }
   }
 
@@ -130,7 +131,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text('Start Tracking', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Start Tracking', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             ),
             const SizedBox(height: 20),
           ],
@@ -178,8 +179,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       const SizedBox(height: 15),
                       ElevatedButton.icon(
                         onPressed: _showAddHabitDialog,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Create Habit'),
+                        icon: const Icon(Icons.add, color: Colors.white),
+                        label: const Text('Create Habit', style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent),
                       ),
                     ],

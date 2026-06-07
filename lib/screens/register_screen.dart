@@ -4,7 +4,7 @@ import '../services/notification_service.dart';
 import 'dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -98,10 +98,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Form(
               key: _formKey,
               child: Card(
-                color: const Color(0xFF1E293B).withOpacity(0.65),
+                color: const Color(0xFF1E293B).withValues(alpha: 0.65),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
-                  side: BorderSide(color: Colors.white.withOpacity(0.08), width: 1.5),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 1.5),
                 ),
                 elevation: 12,
                 child: Padding(
@@ -123,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF312E81).withOpacity(0.3),
+                                  color: const Color(0xFF312E81).withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Icon(
@@ -164,9 +164,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.1),
+                            color: Colors.redAccent.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             _errorMessage!,
@@ -186,7 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hintStyle: const TextStyle(color: Colors.white38),
                           prefixIcon: const Icon(Icons.person_outline, color: Colors.white70),
                           filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
+                          fillColor: Colors.black.withValues(alpha: 0.2),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -207,7 +207,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hintStyle: const TextStyle(color: Colors.white38),
                           prefixIcon: const Icon(Icons.email_outlined, color: Colors.white70),
                           filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
+                          fillColor: Colors.black.withValues(alpha: 0.2),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -228,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hintStyle: const TextStyle(color: Colors.white38),
                           prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
                           filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
+                          fillColor: Colors.black.withValues(alpha: 0.2),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -248,7 +248,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hintStyle: const TextStyle(color: Colors.white38),
                           prefixIcon: const Icon(Icons.card_giftcard, color: Colors.white70),
                           filled: true,
-                          fillColor: Colors.black.withOpacity(0.2),
+                          fillColor: Colors.black.withValues(alpha: 0.2),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -267,7 +267,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 4,
-                          shadowColor: const Color(0xFF6366F1).withOpacity(0.4),
+                          shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.4),
                         ),
                         child: _isLoading
                             ? const SizedBox(

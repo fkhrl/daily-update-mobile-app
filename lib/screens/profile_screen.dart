@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../models/user.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -157,7 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.5),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
@@ -182,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: _user?.isPremium == true ? Colors.amber.withOpacity(0.15) : const Color(0xFF1E293B),
+                                      color: _user?.isPremium == true ? Colors.amber.withValues(alpha: 0.15) : const Color(0xFF1E293B),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -216,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.4),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
@@ -288,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.4),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
@@ -351,7 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.4),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
@@ -409,7 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const Text('No active browser/device tokens found.', style: TextStyle(color: Color(0xFF64748B)))
                   else
                     ..._sessions.map((token) => Card(
-                          color: const Color(0xFF1E293B).withOpacity(0.4),
+                          color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
                             leading: const Icon(Icons.devices, color: Colors.indigoAccent),

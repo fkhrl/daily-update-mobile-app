@@ -53,7 +53,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -68,9 +68,19 @@ class MyApp extends StatelessWidget {
           primary: Color(0xFF6366F1),
           secondary: Color(0xFF818CF8),
           surface: Color(0xFF1E293B),
-          background: const Color(0xFF0F172A),
+          background: Color(0xFF0F172A),
         ),
         useMaterial3: true,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Colors.white, // Ensure button text is visible
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+          ),
+        ),
       ),
       home: const AuthGate(),
     );
@@ -78,7 +88,7 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({Key? key}) : super(key: key);
+  const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {

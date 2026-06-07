@@ -120,7 +120,11 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay> {
                     ),
                     child: Text(
                       _currentStep == _steps.length - 1 ? 'Finish' : 'Next',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],

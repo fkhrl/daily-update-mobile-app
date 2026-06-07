@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
 class ReferralScreen extends StatefulWidget {
-  const ReferralScreen({Key? key}) : super(key: key);
+  const ReferralScreen({super.key});
 
   @override
   State<ReferralScreen> createState() => _ReferralScreenState();
@@ -76,7 +76,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   color: const Color(0xFF1E293B),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.indigo.withOpacity(0.3), width: 1.5),
+                    side: BorderSide(color: Colors.indigo.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -97,7 +97,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                           'Share your referral code with friends. They get 50 points upon signing up, and you earn 100 points!',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 13,
                           ),
                         ),
@@ -224,7 +224,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.5),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Column(

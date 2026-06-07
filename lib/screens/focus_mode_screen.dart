@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FocusModeScreen extends StatefulWidget {
-  const FocusModeScreen({Key? key}) : super(key: key);
+  const FocusModeScreen({super.key});
 
   @override
   State<FocusModeScreen> createState() => _FocusModeScreenState();
@@ -122,13 +122,13 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
                   color: _isWorkSession
-                      ? Colors.indigoAccent.withOpacity(0.15)
-                      : const Color(0xFF10B981).withOpacity(0.15),
+                      ? Colors.indigoAccent.withValues(alpha: 0.15)
+                      : const Color(0xFF10B981).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: _isWorkSession
-                        ? Colors.indigoAccent.withOpacity(0.4)
-                        : const Color(0xFF10B981).withOpacity(0.4),
+                        ? Colors.indigoAccent.withValues(alpha: 0.4)
+                        : const Color(0xFF10B981).withValues(alpha: 0.4),
                   ),
                 ),
                 child: Text(
@@ -153,7 +153,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 8,
-                      backgroundColor: Colors.white.withOpacity(0.05),
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         _isWorkSession ? Colors.indigoAccent : const Color(0xFF10B981),
                       ),
@@ -173,8 +173,8 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                       const SizedBox(height: 5),
                       Text(
                         _isRunning ? "FOCUSING" : "PAUSED",
-                        style: TextStyle(
-                          color: const Color(0xFF94A3B8),
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 3,
@@ -210,7 +210,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: (_isWorkSession ? Colors.indigoAccent : const Color(0xFF10B981)).withOpacity(0.4),
+                            color: (_isWorkSession ? Colors.indigoAccent : const Color(0xFF10B981)).withValues(alpha: 0.4),
                             blurRadius: 15,
                             spreadRadius: 2,
                             offset: const Offset(0, 5),
@@ -238,11 +238,11 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      Text(
+                      const Text(
                         "SESSIONS",
                         style: TextStyle(
                           fontSize: 9,
-                          color: const Color(0xFF94A3B8),
+                          color: Color(0xFF94A3B8),
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.5,
                         ),
@@ -259,7 +259,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                   "\"Focus is a muscle, and you are building it right now.\"",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: const Color(0xFF94A3B8),
+                    color: Color(0xFF94A3B8),
                     fontSize: 13,
                     fontStyle: FontStyle.italic,
                   ),

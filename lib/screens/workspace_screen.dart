@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../utils/ui_helpers.dart';
 
 class WorkspaceScreen extends StatefulWidget {
-  const WorkspaceScreen({Key? key}) : super(key: key);
+  const WorkspaceScreen({super.key});
 
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
@@ -77,7 +78,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       _showSnackbar('Workspace created!');
       _loadWorkspaces();
     } catch (e) {
-      _showSnackbar('Failed to create: $e');
+      UIHelpers.showErrorDialog(context, 'Creation Failed', e);
     }
   }
 
@@ -93,7 +94,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       _showSnackbar('Team member invited successfully!');
       _loadWorkspaceDetails(_activeWorkspaceId!);
     } catch (e) {
-      _showSnackbar('Invitation failed: $e');
+      UIHelpers.showErrorDialog(context, 'Invitation Failed', e);
     }
   }
 
@@ -146,7 +147,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 });
               }
             } catch (e) {
-              _showSnackbar('Failed to post comment: $e');
+              UIHelpers.showErrorDialog(context, 'Comment Failed', e);
             }
           }
 
@@ -181,7 +182,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                     margin: const EdgeInsets.only(bottom: 10),
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF0F172A).withOpacity(0.4),
+                                      color: const Color(0xFF0F172A).withValues(alpha: 0.4),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Column(
@@ -281,7 +282,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           children: [
             Text('Invite Teammate', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 4),
-            Text('Enter email address of registered user:', style: TextStyle(color: const Color(0xFF94A3B8), fontSize: 11)),
+            const Text('Enter email address of registered user:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
             const SizedBox(height: 12),
             TextField(
               controller: _inviteEmailController,
@@ -456,12 +457,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                         Container(
                                           width: double.infinity,
                                           padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(color: const Color(0xFF1E293B).withOpacity(0.3), borderRadius: BorderRadius.circular(10)),
+                                          decoration: BoxDecoration(color: const Color(0xFF1E293B).withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
                                           child: const Text('No shared tasks in this workspace. Create task inside board.', style: TextStyle(color: Color(0xFF94A3B8))),
                                         )
                                       else
                                         ...(_activeWorkspaceDetails!['tasks'] as List).map((task) => Card(
-                                              color: const Color(0xFF1E293B).withOpacity(0.5),
+                                              color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                                               child: ListTile(
                                                 title: Text(task['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                                 subtitle: Text('Status: ${task['status'] ?? 'pending'}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
@@ -484,7 +485,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                           margin: const EdgeInsets.only(bottom: 10),
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF1E293B).withOpacity(0.4),
+                                            color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                                             borderRadius: BorderRadius.circular(12),
                                             border: Border.all(color: const Color(0xFF1E293B)),
                                           ),

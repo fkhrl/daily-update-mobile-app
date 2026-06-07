@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({Key? key}) : super(key: key);
+  const LeaderboardScreen({super.key});
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -109,10 +109,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       return Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: earned ? const Color(0xFF1E1B4B).withOpacity(0.5) : const Color(0xFF1E293B).withOpacity(0.4),
+                          color: earned ? const Color(0xFF1E1B4B).withValues(alpha: 0.5) : const Color(0xFF1E293B).withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: earned ? Colors.indigoAccent.withOpacity(0.3) : const Color(0xFF1E293B),
+                            color: earned ? Colors.indigoAccent.withValues(alpha: 0.3) : const Color(0xFF1E293B),
                           ),
                         ),
                         child: Column(
@@ -156,7 +156,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   const SizedBox(height: 10),
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withOpacity(0.4),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
@@ -188,7 +188,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.indigoAccent.withOpacity(0.15),
+                              color: Colors.indigoAccent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
