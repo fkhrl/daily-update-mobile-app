@@ -23,7 +23,7 @@ tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-// AUTO: Force all plugins to compileSdk 35
+// AUTO: Force all plugins to compileSdk 36
 subprojects {
     val proj = this
     val configureProject = {
@@ -31,13 +31,13 @@ subprojects {
         if (android != null) {
             try {
                 val method = android::class.java.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
-                method.invoke(android, 35)
-                println("Set compileSdkVersion to 35 for project: ${proj.name}")
+                method.invoke(android, 36)
+                println("Set compileSdkVersion to 36 for project: ${proj.name}")
             } catch (e: Exception) {
                 try {
                     val method = android::class.java.getMethod("setCompileSdk", java.lang.Integer::class.java)
-                    method.invoke(android, 35)
-                    println("Set compileSdk to 35 for project: ${proj.name}")
+                    method.invoke(android, 36)
+                    println("Set compileSdk to 36 for project: ${proj.name}")
                 } catch (e2: Exception) {
                     println("Failed to set compileSdk for project: ${proj.name}: ${e2.message}")
                 }
