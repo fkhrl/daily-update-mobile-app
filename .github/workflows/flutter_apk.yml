@@ -238,6 +238,15 @@ jobs:
               print('Patched app/build.gradle.kts compileSdk/targetSdk to 35 and minSdk to 24.')
               print('--- android/app/build.gradle.kts ---')
               print(content)
+
+          # ── Patch local.properties ────────────────────────────────────
+          local_properties = 'android/local.properties'
+          if os.path.exists(local_properties):
+              with open(local_properties, 'a') as f:
+                  f.write('\nflutter.compileSdkVersion=35\n')
+                  f.write('flutter.targetSdkVersion=35\n')
+                  f.write('flutter.minSdkVersion=24\n')
+              print('Appended SDK versions to local.properties.')
           PYEOF
 
       - name: Configure Android native platform (Internet & Firebase)
