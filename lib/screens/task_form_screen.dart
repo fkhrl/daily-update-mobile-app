@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
 
@@ -45,7 +46,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   // Advanced features state variables
   int? _selectedDependencyId;
   List<Task> _allTasks = [];
-  List<String> _attachmentPaths = [];
+  final List<String> _attachmentPaths = [];
   String? _voiceNotePath;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlayingVoiceNote = false;
@@ -714,6 +715,34 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   ),
                 ],
               ),
+              if (widget.task?.attachments != null && widget.task!.attachments!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('Existing Attachments:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ...widget.task!.attachments!.map((path) {
+                  String url = path;
+                  if (!url.startsWith('http')) {
+                    url = url.startsWith('/storage') ? 'https://dailyupdateapi.fkhrlit.com$url' : 'https://dailyupdateapi.fkhrlit.com/storage/$url';
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: InkWell(
+                      onTap: () async {
+                        final uri = Uri.parse(url);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(Icons.link, color: Colors.blueAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(url.split('/').last, style: const TextStyle(color: Colors.blueAccent, fontSize: 12))),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
               if (_voiceNotePath != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
@@ -725,7 +754,13 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                           if (_isPlayingVoiceNote) {
                             await _audioPlayer.pause();
                           } else {
-                            if (_voiceNotePath!.startsWith('http')) {
+                            if (_voiceNotePath == widget.task?.voiceNotePath) {
+                              String url = _voiceNotePath!;
+                              if (!url.startsWith('http')) {
+                                url = url.startsWith('/storage') ? 'https://dailyupdateapi.fkhrlit.com$url' : 'https://dailyupdateapi.fkhrlit.com/storage/$url';
+                              }
+                              await _audioPlayer.play(UrlSource(url));
+                            } else if (_voiceNotePath!.startsWith('http')) {
                               await _audioPlayer.play(UrlSource(_voiceNotePath!));
                             } else {
                               await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
@@ -964,22 +999,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 8. Instant Notification Switch
-              Card(
-                color: const Color(0xFF1E293B),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: SwitchListTile(
-                  title: const Text('Instant Notification', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Send email and push notification immediately', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  value: _isInstant,
-                  activeThumbColor: const Color(0xFF6366F1),
-                  onChanged: (bool value) {
-                    setState(() {
-                      _isInstant = value;
-                    });
-                  },
-                ),
-              ),
+              // Removed Instant Notification Switch
               const SizedBox(height: 32),
 
               // 9. Save Button

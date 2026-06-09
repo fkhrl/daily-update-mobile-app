@@ -20,8 +20,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
   // Habits Data
   List<dynamic> _habits = [];
   final TextEditingController _habitNameController = TextEditingController();
-  String _selectedDifficulty = 'medium';
-  String _selectedTimeOfDay = 'anytime';
+  final String _selectedDifficulty = 'medium';
+  final String _selectedTimeOfDay = 'anytime';
 
   // Health Data
   int _waterGlasses = 0;
@@ -123,16 +123,16 @@ class _HabitsScreenState extends State<HabitsScreen> {
   Future<void> _addMedicine() async {
     if (_medNameController.text.trim().isEmpty) return;
     try {
-      String _formatTime(TimeOfDay? t) {
+      String formatTime(TimeOfDay? t) {
         if (t == null) return '';
         final h = t.hour.toString().padLeft(2, '0');
         final m = t.minute.toString().padLeft(2, '0');
         return '$h:$m';
       }
 
-      String? m = _morningTime != null ? _formatTime(_morningTime) : null;
-      String? a = _afternoonTime != null ? _formatTime(_afternoonTime) : null;
-      String? n = _nightTime != null ? _formatTime(_nightTime) : null;
+      String? m = _morningTime != null ? formatTime(_morningTime) : null;
+      String? a = _afternoonTime != null ? formatTime(_afternoonTime) : null;
+      String? n = _nightTime != null ? formatTime(_nightTime) : null;
       
       int? durationDays = int.tryParse(_medDurationController.text.trim());
 
@@ -209,7 +209,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
       setState(() {
         _habits.removeWhere((h) => h['id'] == habitId);
       });
-    } catch (e) {}
+    } catch (e) {
+      // ignore
+    }
   }
 
   Future<void> _createHabit() async {

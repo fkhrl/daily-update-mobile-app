@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../services/api_service.dart';
@@ -79,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       final googleSignIn = GoogleSignIn(
-        clientId: 'dummy-client-id.apps.googleusercontent.com', // Fix for web assertion error
+        clientId: kIsWeb ? 'dummy-client-id.apps.googleusercontent.com' : null, // Fix for web assertion error, null for mobile to use google-services.json
       );
       final account = await googleSignIn.signIn();
       if (account != null) {

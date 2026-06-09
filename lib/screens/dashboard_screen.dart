@@ -7,7 +7,6 @@ import 'login_screen.dart';
 import 'task_form_screen.dart';
 import 'referral_screen.dart';
 import 'feedback_dialog.dart';
-import 'focus_mode_screen.dart';
 import 'habits_screen.dart';
 import 'notes_screen.dart';
 import 'ai_planner_screen.dart';
@@ -322,7 +321,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   const SizedBox(height: 12),
 
                   // Metadata Badges Row (Recurrence, Reminders, Checklist)
-                  Row(
+                  // Metadata Badges Row (Recurrence, Reminders, Checklist)
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
+                    runSpacing: 4,
                     children: [
                       if (task.recurrence != 'none') ...[
                         const Icon(Icons.repeat, color: Colors.white60, size: 14),
@@ -331,7 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           task.recurrence.toUpperCase(),
                           style: const TextStyle(color: Colors.white60, fontSize: 11),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                       ],
                       if (task.reminders.isNotEmpty) ...[
                         const Icon(Icons.notifications_active_outlined, color: Color(0xFF818CF8), size: 14),
@@ -340,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           '${task.reminders.length} reminder(s)',
                           style: const TextStyle(color: Color(0xFF818CF8), fontSize: 11),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                       ],
                       if (task.subtasks.isNotEmpty) ...[
                         const Icon(Icons.checklist, color: Color(0xFF10B981), size: 14),
@@ -349,7 +352,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           '${task.completionPercentage}% checklist',
                           style: const TextStyle(color: Color(0xFF10B981), fontSize: 11),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                       ],
                       if (task.attachments != null && task.attachments!.isNotEmpty) ...[
                         const Icon(Icons.attach_file, color: Colors.indigoAccent, size: 14),
@@ -358,7 +361,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           '${task.attachments!.length}',
                           style: const TextStyle(color: Colors.indigoAccent, fontSize: 11),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                       ],
                       if (task.voiceNotePath != null) ...[
                         const Icon(Icons.mic, color: Colors.purpleAccent, size: 14),
@@ -385,10 +388,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   const SizedBox(height: 12),
 
                   // Time and Status Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             DateFormat('MMM d, yyyy h:mm a').format(task.scheduledAt),
@@ -419,30 +426,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ],
                         ],
                       ),
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          if (task.isInstant) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Instant',
-                                style: TextStyle(
-                                  color: Colors.purpleAccent,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
                           // Status Badge
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            margin: const EdgeInsets.only(right: 8),
                             decoration: BoxDecoration(
                               color: statusColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
@@ -711,11 +702,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ),
             backgroundColor: const Color(0xFF1E1B4B),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.email_outlined, color: Color(0xFF818CF8)),
-                tooltip: 'Trigger Notification Mailer',
-                onPressed: _triggerTestEmail,
-              ),
               IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: () async {
