@@ -12,7 +12,20 @@
           "package_name": "com.example.daily_update_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "925566632947-aq4klqdsr198fsbc30k64p7dd1aotnpk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.daily_update_app",
+            "certificate_hash": "b170c1df625e4e3d0f1fb5b4f5068b74655dde16"
+          }
+        },
+        {
+          "client_id": "925566632947-qhm2gt78mjtf6vap178bhtdr8v9k6cuk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDzsIyWzKZi5OmxVolgUtDfzLvc-H1eCyc"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "925566632947-qhm2gt78mjtf6vap178bhtdr8v9k6cuk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "925566632947-p1h37r2ogh162mn2enu3065gkh0nseee.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.dailyUpdateApp"
+              }
+            }
+          ]
         }
       }
     }
