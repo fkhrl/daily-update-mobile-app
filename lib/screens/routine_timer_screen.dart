@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
@@ -88,7 +89,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
       // _startTimer();
     } else {
       // Finished all phases
-      FlutterRingtonePlayer().playNotification();
+      if (!kIsWeb) FlutterRingtonePlayer().playNotification();
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -110,7 +111,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
   }
 
   void _playAlarmAndShowDialog() {
-    FlutterRingtonePlayer().playAlarm(looping: false);
+    if (!kIsWeb) FlutterRingtonePlayer().playAlarm(looping: false);
     
     showDialog(
       context: context,
@@ -125,14 +126,14 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               Navigator.pop(ctx);
             },
             child: const Text('No, Im good', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               setState(() => _secondsRemaining += 5 * 60);
               Navigator.pop(ctx);
             },
@@ -140,7 +141,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
           ),
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               setState(() => _secondsRemaining += 10 * 60);
               Navigator.pop(ctx);
             },
@@ -148,7 +149,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
           ),
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               setState(() => _secondsRemaining += 15 * 60);
               Navigator.pop(ctx);
             },
@@ -162,7 +163,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
   @override
   void dispose() {
     if (_timer != null) _timer!.cancel();
-    FlutterRingtonePlayer().stop();
+    if (!kIsWeb) FlutterRingtonePlayer().stop();
     super.dispose();
   }
 

@@ -50,6 +50,9 @@ class Task {
   final int position;
   final int completionPercentage;
   final List<Subtask> subtasks;
+  final int? dependencyId;
+  final List<String>? attachments;
+  final String? voiceNotePath;
 
   Task({
     required this.id,
@@ -67,6 +70,9 @@ class Task {
     required this.position,
     required this.completionPercentage,
     required this.subtasks,
+    this.dependencyId,
+    this.attachments,
+    this.voiceNotePath,
   });
 
   static DateTime _parseDate(String? dateStr) {
@@ -100,6 +106,9 @@ class Task {
       subtasks: json['subtasks'] != null
           ? (json['subtasks'] as List).map((s) => Subtask.fromJson(s)).toList()
           : [],
+      dependencyId: json['dependency_id'] != null ? int.tryParse(json['dependency_id'].toString()) : null,
+      attachments: json['attachments'] != null ? List<String>.from(json['attachments']) : null,
+      voiceNotePath: json['voice_note_path']?.toString(),
     );
   }
 
@@ -120,6 +129,9 @@ class Task {
       'position': position,
       'completion_percentage': completionPercentage,
       'subtasks': subtasks.map((s) => s.toJson()).toList(),
+      'dependency_id': dependencyId,
+      'attachments': attachments,
+      'voice_note_path': voiceNotePath,
     };
   }
 }

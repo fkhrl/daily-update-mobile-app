@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 import 'api_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -155,6 +156,65 @@ class NotificationService {
       if (kDebugMode) {
         print("Error syncing FCM Token: $e");
       }
+    }
+  }
+
+  tz.TZDateTime _nextInstanceOfTime(int weekday, int hour, int minute) {
+    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    while (scheduledDate.weekday != weekday || scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+
+  Future<void> scheduleWeeklyRoutineReminder(int id, String dayOfWeek, int hour, int minute, String subject) async {
+    if (kIsWeb) return;
+    
+    int weekday = 1;
+    switch (dayOfWeek.toLowerCase()) {
+      case 'monday': weekday = 1; break;
+      case 'tuesday': weekday = 2; break;
+      case 'wednesday': weekday = 3; break;
+      case 'thursday': weekday = 4; break;
+      case 'friday': weekday = 5; break;
+      case 'saturday': weekday = 6; break;
+      case 'sunday': weekday = 7; break;
+    }
+
+    // Target time is exactly 2 minutes before schedule
+    var targetDate = _nextInstanceOfTime(weekday, hour, minute);
+    targetDate = targetDate.subtract(const Duration(minutes: 2));
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id + 10000, // Offset to avoid collision with other notifications
+      'Get ready!',
+      'Your $subject routine starts in 2 minutes!',
+      targetDate,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
+          icon: '@mipmap/ic_launcher',
+          importance: Importance.max,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+    
+    if (kDebugMode) {
+      print("Scheduled routine #$id reminder for $dayOfWeek at $hour:$minute (ringing at ${targetDate.hour}:${targetDate.minute})");
+    }
+  }
+
+  Future<void> cancelRoutineReminder(int id) async {
+    if (kIsWeb) return;
+    await flutterLocalNotificationsPlugin.cancel(id + 10000);
+    if (kDebugMode) {
+      print("Cancelled scheduled routine reminder #$id");
     }
   }
 }

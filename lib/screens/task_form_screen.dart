@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
 
@@ -37,9 +39,16 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   bool _remind1Hour = false;
   final List<DateTime> _customReminders = [];
 
-  // Subtasks checklist state variables
   final List<Subtask> _subtasks = [];
   final TextEditingController _subtaskTitleController = TextEditingController();
+
+  // Advanced features state variables
+  int? _selectedDependencyId;
+  List<Task> _allTasks = [];
+  List<String> _attachmentPaths = [];
+  String? _voiceNotePath;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlayingVoiceNote = false;
 
   final List<String> _predefinedCategories = [
     'personal',
@@ -92,13 +101,58 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         }
       }
       _subtasks.addAll(widget.task!.subtasks);
+      _selectedDependencyId = widget.task!.dependencyId;
+      _voiceNotePath = widget.task!.voiceNotePath;
+      // We don't automatically load existing attachment paths because they are remote URLs
+      // In a real app we'd show them separately. For now, we just allow adding new ones.
     } else {
       _customCategoryController = TextEditingController();
+    }
+    _loadAllTasks();
+
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlayingVoiceNote = state == PlayerState.playing;
+        });
+      }
+    });
+  }
+
+  Future<void> _loadAllTasks() async {
+    try {
+      final res = await ApiService().getTasks(tab: 'future'); // or get all tasks
+      if (mounted) {
+        setState(() {
+          _allTasks = List<Task>.from(res['tasks']);
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  Future<void> _pickAttachments() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    if (result != null) {
+      setState(() {
+        _attachmentPaths.addAll(result.paths.whereType<String>());
+      });
+    }
+  }
+
+  Future<void> _pickVoiceNote() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    if (result != null && result.paths.isNotEmpty) {
+      setState(() {
+        _voiceNotePath = result.paths.first;
+      });
     }
   }
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _customCategoryController.dispose();
@@ -257,23 +311,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }).toList();
 
     try {
-      if (widget.task == null || widget.task!.id == 0) {
-        // Create new task
-        await ApiService().createTask(
-          _titleController.text.trim(),
-          _descriptionController.text.trim(),
-          _selectedDate,
-          _isInstant,
-          priority: _selectedPriority,
-          category: category,
-          status: _selectedStatus,
-          recurrence: _selectedRecurrence,
-          recurrenceInterval: _recurrenceInterval,
-          reminders: finalReminders,
-          subtasks: subtaskPayload,
-        );
-      } else {
-        // Update existing task
+      final String category = _isCustomCategory ? _customCategoryController.text.trim() : _selectedCategory;
+      if (widget.task != null) {
         await ApiService().updateTask(
           widget.task!.id,
           _titleController.text.trim(),
@@ -288,6 +327,26 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           recurrenceInterval: _recurrenceInterval,
           reminders: finalReminders,
           subtasks: subtaskPayload,
+          dependencyId: _selectedDependencyId,
+          voiceNotePath: _voiceNotePath?.startsWith('http') == true ? null : _voiceNotePath,
+          attachmentPaths: _attachmentPaths.isNotEmpty ? _attachmentPaths : null,
+        );
+      } else {
+        await ApiService().createTask(
+          _titleController.text.trim(),
+          _descriptionController.text.trim(),
+          _selectedDate,
+          _isInstant,
+          priority: _selectedPriority,
+          category: category,
+          status: 'pending',
+          recurrence: _selectedRecurrence,
+          recurrenceInterval: _recurrenceInterval,
+          reminders: finalReminders,
+          subtasks: subtaskPayload,
+          dependencyId: _selectedDependencyId,
+          voiceNotePath: _voiceNotePath,
+          attachmentPaths: _attachmentPaths.isNotEmpty ? _attachmentPaths : null,
         );
       }
       if (!mounted) return;
@@ -593,6 +652,99 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Dependency Task
+              const Text('Task Dependency (Blocked By)', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int?>(
+                    value: _selectedDependencyId,
+                    hint: const Text('No Dependency', style: TextStyle(color: Colors.white54)),
+                    dropdownColor: const Color(0xFF1E293B),
+                    style: const TextStyle(color: Colors.white),
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('No Dependency'),
+                      ),
+                      ..._allTasks.where((t) => t.id != widget.task?.id).map((t) => DropdownMenuItem<int?>(
+                        value: t.id,
+                        child: Text(t.title, overflow: TextOverflow.ellipsis),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedDependencyId = val;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Attachments
+              const Text('Attachments & Media', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B)),
+                      icon: const Icon(Icons.attach_file, color: Colors.indigoAccent),
+                      label: Text('Attach Files (${_attachmentPaths.length})', style: const TextStyle(color: Colors.white)),
+                      onPressed: _pickAttachments,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B)),
+                      icon: Icon(_voiceNotePath != null ? Icons.mic : Icons.mic_none, color: Colors.indigoAccent),
+                      label: Text(_voiceNotePath != null ? 'Voice Note Added' : 'Add Voice Note', style: const TextStyle(color: Colors.white)),
+                      onPressed: _pickVoiceNote,
+                    ),
+                  ),
+                ],
+              ),
+              if (_voiceNotePath != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(_isPlayingVoiceNote ? Icons.pause_circle_filled : Icons.play_circle_fill, color: Colors.indigoAccent),
+                        onPressed: () async {
+                          if (_isPlayingVoiceNote) {
+                            await _audioPlayer.pause();
+                          } else {
+                            if (_voiceNotePath!.startsWith('http')) {
+                              await _audioPlayer.play(UrlSource(_voiceNotePath!));
+                            } else {
+                              await _audioPlayer.play(DeviceFileSource(_voiceNotePath!));
+                            }
+                          }
+                        },
+                      ),
+                      const Text('Preview Voice Note', style: TextStyle(color: Colors.white70)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => setState(() {
+                          _voiceNotePath = null;
+                          _audioPlayer.stop();
+                        }),
+                      )
+                    ],
+                  ),
+                ),
               const SizedBox(height: 20),
 
               // 6. Scheduled Date & Time

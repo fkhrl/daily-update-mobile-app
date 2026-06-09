@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -41,7 +42,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
           // 1-minute warning
           if (_secondsRemaining == 60 && !_hasShown1MinWarning) {
             _hasShown1MinWarning = true;
-            FlutterRingtonePlayer().playNotification();
+            if (!kIsWeb) FlutterRingtonePlayer().playNotification();
           }
 
         } else {
@@ -104,7 +105,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   void _showAddMoreTimeDialog() {
     _timer?.cancel();
     setState(() => _isRunning = false);
-    FlutterRingtonePlayer().playAlarm();
+    if (!kIsWeb) FlutterRingtonePlayer().playAlarm();
 
     showDialog(
       context: context,
@@ -116,7 +117,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               Navigator.pop(ctx);
               setState(() {
                 _totalSeconds += 5 * 60;
@@ -128,7 +129,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
           ),
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               Navigator.pop(ctx);
               setState(() {
                 _totalSeconds += 10 * 60;
@@ -140,7 +141,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
           ),
           TextButton(
             onPressed: () {
-              FlutterRingtonePlayer().stop();
+              if (!kIsWeb) FlutterRingtonePlayer().stop();
               Navigator.pop(ctx);
               _startPauseTimer();
             },

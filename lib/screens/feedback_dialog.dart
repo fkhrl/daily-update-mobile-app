@@ -1,5 +1,7 @@
+// Removed dart:io
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../utils/toast_util.dart';
 
@@ -16,6 +18,8 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
   String _selectedType = 'Bug Report 🐛';
   bool _isSubmitting = false;
   String? _errorMsg;
+  String? _screenshotPath;
+  final ImagePicker _picker = ImagePicker();
 
   final List<String> _feedbackTypes = [
     'Bug Report 🐛',
@@ -46,6 +50,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
         _selectedType,
         _descriptionController.text.trim(),
         deviceInfo,
+        imagePath: _screenshotPath,
       );
 
       if (res['success'] == true) {
@@ -178,6 +183,35 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                 ),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Description cannot be empty' : null,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _screenshotPath == null ? 'No screenshot attached' : 'Screenshot attached!',
+                      style: TextStyle(color: _screenshotPath == null ? Colors.white30 : Colors.greenAccent, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+                      if (pickedFile != null) {
+                        setState(() {
+                          _screenshotPath = pickedFile.path;
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.attach_file, color: Colors.indigoAccent, size: 18),
+                    label: const Text('Attach', style: TextStyle(color: Colors.indigoAccent)),
+                  ),
+                  if (_screenshotPath != null)
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.redAccent, size: 18),
+                      onPressed: () => setState(() => _screenshotPath = null),
+                    ),
+                ],
               ),
             ],
           ),

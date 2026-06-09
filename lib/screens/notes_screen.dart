@@ -32,6 +32,10 @@ class _NotesScreenState extends State<NotesScreen> {
   List<String> _selectedImages = [];
   final ImagePicker _imagePicker = ImagePicker();
 
+  String? _selectedFilterTag;
+  final Map<int, String> _summaries = {};
+  final Map<int, bool> _isSummarizing = {};
+
   @override
   void initState() {
     super.initState();
@@ -87,10 +91,25 @@ class _NotesScreenState extends State<NotesScreen> {
       await _apiService.deleteNote(noteId);
       setState(() {
         _notes.removeWhere((n) => n['id'] == noteId);
+        _summaries.remove(noteId);
       });
       _showSnackbar('Note deleted.');
     } catch (e) {
       _showSnackbar('Failed to delete note: $e', isError: true);
+    }
+  }
+
+  Future<void> _summarizeNote(int noteId, String content) async {
+    setState(() => _isSummarizing[noteId] = true);
+    try {
+      final summaryData = await _apiService.summarizeNote(content);
+      setState(() {
+        _summaries[noteId] = summaryData['summary'] ?? 'No summary available.';
+      });
+    } catch (e) {
+      _showSnackbar('Failed to summarize: $e', isError: true);
+    } finally {
+      setState(() => _isSummarizing[noteId] = false);
     }
   }
 
@@ -284,6 +303,43 @@ class _NotesScreenState extends State<NotesScreen> {
             ),
           ),
 
+          // Tag Filter Bar
+          if (_notes.isNotEmpty)
+            Container(
+              height: 40,
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  ChoiceChip(
+                    label: const Text('All'),
+                    selected: _selectedFilterTag == null,
+                    onSelected: (val) => setState(() => _selectedFilterTag = null),
+                    selectedColor: Colors.indigoAccent,
+                    backgroundColor: const Color(0xFF1E293B),
+                    labelStyle: TextStyle(color: _selectedFilterTag == null ? Colors.white : Colors.white70),
+                    showCheckmark: false,
+                  ),
+                  ..._notes
+                      .expand((n) => (n['tags'] as List?)?.map((t) => t.toString()).toList() ?? <String>[])
+                      .toSet()
+                      .map((tag) => Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: ChoiceChip(
+                              label: Text('#$tag'),
+                              selected: _selectedFilterTag == tag,
+                              onSelected: (val) => setState(() => _selectedFilterTag = val ? tag : null),
+                              selectedColor: Colors.indigoAccent,
+                              backgroundColor: const Color(0xFF1E293B),
+                              labelStyle: TextStyle(color: _selectedFilterTag == tag ? Colors.white : Colors.white70),
+                              showCheckmark: false,
+                            ),
+                          )),
+                ],
+              ),
+            ),
+
           // 2. Notes List
           Expanded(
             child: _isLoading
@@ -295,12 +351,24 @@ class _NotesScreenState extends State<NotesScreen> {
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _notes.length,
-                        itemBuilder: (ctx, idx) {
-                          final note = _notes[idx];
-                          final imagesList = note['images'] as List?;
+                    : Builder(builder: (context) {
+                        final filteredNotes = _selectedFilterTag == null
+                            ? _notes
+                            : _notes.where((n) {
+                                final tags = (n['tags'] as List?)?.map((t) => t.toString()) ?? [];
+                                return tags.contains(_selectedFilterTag);
+                              }).toList();
+                              
+                        if (filteredNotes.isEmpty) {
+                          return const Center(child: Text('No notes found for this tag.', style: TextStyle(color: Color(0xFF64748B))));
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredNotes.length,
+                          itemBuilder: (ctx, idx) {
+                            final note = filteredNotes[idx];
+                            final imagesList = note['images'] as List?;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -341,6 +409,59 @@ class _NotesScreenState extends State<NotesScreen> {
                                         ),
                                       )
                                     : Text(note['content'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                                const SizedBox(height: 10),
+
+                                // Tags Row
+                                if (note['tags'] != null && (note['tags'] as List).isNotEmpty)
+                                  Wrap(
+                                    spacing: 6,
+                                    children: (note['tags'] as List).map((t) => Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF334155),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text('#$t', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                                    )).toList(),
+                                  ),
+
+                                // AI Summarize Button
+                                if ((note['content']?.toString() ?? '').length > 50)
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: _isSummarizing[note['id']] == true ? null : () => _summarizeNote(note['id'], note['content']),
+                                      icon: _isSummarizing[note['id']] == true 
+                                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                          : const Icon(Icons.auto_awesome, color: Colors.indigoAccent, size: 14),
+                                      label: const Text('AI Summarize', style: TextStyle(color: Colors.indigoAccent, fontSize: 11)),
+                                    ),
+                                  ),
+
+                                // AI Summary Box
+                                if (_summaries.containsKey(note['id']))
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E1B4B).withValues(alpha: 0.5),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.indigoAccent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.auto_awesome, color: Colors.indigoAccent, size: 16),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _summaries[note['id']]!,
+                                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 const SizedBox(height: 10),
 
                                 // Image list attachments preview
@@ -400,7 +521,8 @@ class _NotesScreenState extends State<NotesScreen> {
                             ),
                           );
                         },
-                      ),
+                      );
+                    }),
           ),
         ],
       ),

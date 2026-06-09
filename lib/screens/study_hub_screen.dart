@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../utils/toast_util.dart';
 import 'focus_mode_screen.dart';
 import 'routine_timer_screen.dart';
@@ -97,7 +98,7 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
           : null;
 
       if (_editingRoutineId != null) {
-        await _apiService.updateStudyRoutine(
+        final updatedRoutine = await _apiService.updateStudyRoutine(
           _editingRoutineId!,
           _routineDay, 
           _routineSubjectCtrl.text, 
@@ -106,10 +107,23 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
           int.tryParse(_routineWriteCtrl.text) ?? 0, 
           int.tryParse(_routineMcqCtrl.text) ?? 0
         );
+        
+        if (_routineTime != null && updatedRoutine != null) {
+          await NotificationService().scheduleWeeklyRoutineReminder(
+            updatedRoutine['id'], 
+            _routineDay, 
+            _routineTime!.hour, 
+            _routineTime!.minute, 
+            _routineSubjectCtrl.text
+          );
+        } else if (_routineTime == null) {
+          await NotificationService().cancelRoutineReminder(_editingRoutineId!);
+        }
+
         if (!mounted) return;
         ToastUtil.showSuccess(context, 'Weekly routine updated!');
       } else {
-        await _apiService.createStudyRoutine(
+        final newRoutine = await _apiService.createStudyRoutine(
           _routineDay, 
           _routineSubjectCtrl.text, 
           timeStr,
@@ -117,6 +131,17 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
           int.tryParse(_routineWriteCtrl.text) ?? 0, 
           int.tryParse(_routineMcqCtrl.text) ?? 0
         );
+
+        if (_routineTime != null && newRoutine != null) {
+          await NotificationService().scheduleWeeklyRoutineReminder(
+            newRoutine['id'], 
+            _routineDay, 
+            _routineTime!.hour, 
+            _routineTime!.minute, 
+            _routineSubjectCtrl.text
+          );
+        }
+
         if (!mounted) return;
         ToastUtil.showSuccess(context, 'Weekly routine added!');
       }
@@ -134,6 +159,7 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
   Future<void> _deleteRoutine(int id) async {
     try {
       await _apiService.deleteStudyRoutine(id);
+      await NotificationService().cancelRoutineReminder(id);
       if (!mounted) return;
       ToastUtil.showSuccess(context, 'Routine deleted!');
       _loadDashboard();

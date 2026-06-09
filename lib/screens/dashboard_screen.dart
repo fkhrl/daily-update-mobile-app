@@ -15,6 +15,7 @@ import 'workspace_screen.dart';
 import 'profile_screen.dart';
 import 'subscription_screen.dart';
 import 'leaderboard_screen.dart';
+import 'study_hub_screen.dart';
 import 'walkthrough_overlay.dart';
 import '../widgets/ai_assistant_bottom_sheet.dart';
 
@@ -348,6 +349,24 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           '${task.completionPercentage}% checklist',
                           style: const TextStyle(color: Color(0xFF10B981), fontSize: 11),
                         ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (task.attachments != null && task.attachments!.isNotEmpty) ...[
+                        const Icon(Icons.attach_file, color: Colors.indigoAccent, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${task.attachments!.length}',
+                          style: const TextStyle(color: Colors.indigoAccent, fontSize: 11),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (task.voiceNotePath != null) ...[
+                        const Icon(Icons.mic, color: Colors.purpleAccent, size: 14),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Voice',
+                          style: TextStyle(color: Colors.purpleAccent, fontSize: 11),
+                        ),
                       ],
                     ],
                   ),
@@ -541,17 +560,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.timer_outlined, color: Colors.white70),
-                  title: const Text('Focus Mode (Pomodoro)', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const FocusModeScreen()),
-                    );
-                  },
-                ),
-                ListTile(
                   leading: const Icon(Icons.local_fire_department_outlined, color: Colors.white70),
                   title: const Text('Habit Tracker', style: TextStyle(color: Colors.white)),
                   onTap: () {
@@ -559,6 +567,17 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const HabitsScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.school_outlined, color: Colors.white70),
+                  title: const Text('Study Mode / Student Hub', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StudyHubScreen()),
                     );
                   },
                 ),

@@ -186,6 +186,7 @@ class ApiService {
 
 
 
+
   Future<Task> createTask(
     String title,
     String? description,
@@ -199,27 +200,51 @@ class ApiService {
     List<DateTime>? reminders,
     List<Map<String, dynamic>>? subtasks,
     int? workspaceId,
+    int? dependencyId,
+    String? voiceNotePath,
+    List<String>? attachmentPaths,
   }) async {
     final token = await getToken();
     
-    final response = await http.post(
-      Uri.parse('$baseUrl/tasks'),
-      headers: _headers(token),
-      body: jsonEncode({
-        'title': title,
-        'description': description,
-        'scheduled_at': scheduledAt.toIso8601String(),
-        'is_instant': isInstant,
-        'priority': priority,
-        'category': category,
-        'status': status,
-        'recurrence': recurrence,
-        'recurrence_interval': recurrenceInterval,
-        'reminders': reminders?.map((r) => r.toIso8601String()).toList(),
-        if (subtasks != null) 'subtasks': subtasks,
-        if (workspaceId != null) 'workspace_id': workspaceId,
-      }),
-    );
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/tasks'));
+    request.headers.addAll({'Authorization': 'Bearer $token', 'Accept': 'application/json'});
+    
+    request.fields['title'] = title;
+    if (description != null) request.fields['description'] = description;
+    request.fields['scheduled_at'] = scheduledAt.toIso8601String();
+    request.fields['is_instant'] = isInstant ? '1' : '0';
+    request.fields['priority'] = priority;
+    request.fields['category'] = category;
+    request.fields['status'] = status;
+    request.fields['recurrence'] = recurrence;
+    request.fields['recurrence_interval'] = recurrenceInterval.toString();
+    
+    if (workspaceId != null) request.fields['workspace_id'] = workspaceId.toString();
+    if (dependencyId != null) request.fields['dependency_id'] = dependencyId.toString();
+
+    if (reminders != null) {
+      for (int i = 0; i < reminders.length; i++) {
+        request.fields['reminders[$i]'] = reminders[i].toIso8601String();
+      }
+    }
+    if (subtasks != null) {
+      for (int i = 0; i < subtasks.length; i++) {
+        request.fields['subtasks[$i][title]'] = subtasks[i]['title'];
+        request.fields['subtasks[$i][is_completed]'] = (subtasks[i]['is_completed'] == true) ? '1' : '0';
+      }
+    }
+
+    if (voiceNotePath != null) {
+      request.files.add(await http.MultipartFile.fromPath('voice_note', voiceNotePath));
+    }
+    if (attachmentPaths != null) {
+      for (String path in attachmentPaths) {
+        request.files.add(await http.MultipartFile.fromPath('attachments[]', path));
+      }
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
 
     final data = jsonDecode(response.body);
     if (response.statusCode == 201 && data['success'] == true) {
@@ -243,32 +268,57 @@ class ApiService {
     List<DateTime>? reminders,
     List<Map<String, dynamic>>? subtasks,
     int? workspaceId,
+    int? dependencyId,
+    String? voiceNotePath,
+    List<String>? attachmentPaths,
   }) async {
     final token = await getToken();
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/tasks/$id'),
-      headers: _headers(token),
-      body: jsonEncode({
-        'title': title,
-        'description': description,
-        'scheduled_at': scheduledAt.toIso8601String(),
-        'is_instant': isInstant,
-        'is_notified': isNotified,
-        if (priority != null) 'priority': priority,
-        if (category != null) 'category': category,
-        if (status != null) 'status': status,
-        if (recurrence != null) 'recurrence': recurrence,
-        if (recurrenceInterval != null) 'recurrence_interval': recurrenceInterval,
-        if (reminders != null) 'reminders': reminders.map((r) => r.toIso8601String()).toList(),
-        if (subtasks != null) 'subtasks': subtasks,
-        'workspace_id': workspaceId, // Can be null to clear
-      }),
-    );
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/tasks/$id'));
+    request.fields['_method'] = 'PUT'; // Laravel spoofing for PUT with files
+    request.headers.addAll({'Authorization': 'Bearer $token', 'Accept': 'application/json'});
+
+    request.fields['title'] = title;
+    if (description != null) request.fields['description'] = description;
+    request.fields['scheduled_at'] = scheduledAt.toIso8601String();
+    request.fields['is_instant'] = isInstant ? '1' : '0';
+    request.fields['is_notified'] = isNotified ? '1' : '0';
+    
+    if (priority != null) request.fields['priority'] = priority;
+    if (category != null) request.fields['category'] = category;
+    if (status != null) request.fields['status'] = status;
+    if (recurrence != null) request.fields['recurrence'] = recurrence;
+    if (recurrenceInterval != null) request.fields['recurrence_interval'] = recurrenceInterval.toString();
+    if (workspaceId != null) request.fields['workspace_id'] = workspaceId.toString();
+    if (dependencyId != null) request.fields['dependency_id'] = dependencyId.toString();
+
+    if (reminders != null) {
+      for (int i = 0; i < reminders.length; i++) {
+        request.fields['reminders[$i]'] = reminders[i].toIso8601String();
+      }
+    }
+    if (subtasks != null) {
+      for (int i = 0; i < subtasks.length; i++) {
+        request.fields['subtasks[$i][title]'] = subtasks[i]['title'];
+        request.fields['subtasks[$i][is_completed]'] = (subtasks[i]['is_completed'] == true) ? '1' : '0';
+      }
+    }
+
+    if (voiceNotePath != null) {
+      request.files.add(await http.MultipartFile.fromPath('voice_note', voiceNotePath));
+    }
+    if (attachmentPaths != null) {
+      for (String path in attachmentPaths) {
+        request.files.add(await http.MultipartFile.fromPath('attachments[]', path));
+      }
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
 
     final data = jsonDecode(response.body);
     if (response.statusCode == 200 && data['success'] == true) {
-      return data; // Return full map containing newly_earned_badges
+      return data;
     }
     throw Exception(data['message'] ?? 'Failed to update task');
   }
@@ -352,23 +402,64 @@ class ApiService {
     throw Exception(data['message'] ?? 'Failed to load referral stats');
   }
 
-  Future<Map<String, dynamic>> submitFeedback(String title, String description, Map<String, dynamic> deviceInfo) async {
+  Future<Map<String, dynamic>> submitFeedback(String title, String description, Map<String, dynamic> deviceInfo, {String? imagePath}) async {
+    final token = await getToken();
+    
+    if (imagePath != null) {
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/feedback'))
+        ..headers.addAll({
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        })
+        ..fields['title'] = title
+        ..fields['description'] = description;
+        
+      deviceInfo.forEach((key, value) {
+        request.fields['device_info[$key]'] = value.toString();
+      });
+      
+      request.files.add(await http.MultipartFile.fromPath('screenshot', imagePath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
+      
+      if (response.statusCode == 201 && data['success'] == true) {
+        return data;
+      }
+      throw Exception(data['message'] ?? 'Failed to submit feedback');
+    } else {
+      final response = await http.post(
+        Uri.parse('$baseUrl/feedback'),
+        headers: _headers(token),
+        body: jsonEncode({
+          'title': title,
+          'description': description,
+          'device_info': deviceInfo,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201 && data['success'] == true) {
+        return data;
+      }
+      throw Exception(data['message'] ?? 'Failed to submit feedback');
+    }
+  }
+
+  Future<Map<String, dynamic>> summarizeNote(String content) async {
     final token = await getToken();
     final response = await http.post(
-      Uri.parse('$baseUrl/feedback'),
+      Uri.parse('$baseUrl/ai/summarize-note'),
       headers: _headers(token),
-      body: jsonEncode({
-        'title': title,
-        'description': description,
-        'device_info': deviceInfo,
-      }),
+      body: jsonEncode({'content': content}),
     );
 
     final data = jsonDecode(response.body);
-    if (response.statusCode == 201 && data['success'] == true) {
-      return data;
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data['data'];
     }
-    throw Exception(data['message'] ?? 'Failed to submit feedback');
+    throw Exception(data['message'] ?? 'Failed to summarize note');
   }
 
   Future<void> reorderTasks(List<int> taskIds) async {
@@ -919,7 +1010,7 @@ class ApiService {
     }
   }
 
-  Future<void> createStudyRoutine(String dayOfWeek, String subject, String? startTime, int readingMin, int writingMin, int mcqMin) async {
+  Future<Map<String, dynamic>?> createStudyRoutine(String dayOfWeek, String subject, String? startTime, int readingMin, int writingMin, int mcqMin) async {
     final token = await getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/study/routines'),
@@ -936,9 +1027,11 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception('Failed to create routine');
     }
+    final body = jsonDecode(response.body);
+    return body['data'];
   }
 
-  Future<void> updateStudyRoutine(int id, String dayOfWeek, String subject, String? startTime, int readingMin, int writingMin, int mcqMin) async {
+  Future<Map<String, dynamic>?> updateStudyRoutine(int id, String dayOfWeek, String subject, String? startTime, int readingMin, int writingMin, int mcqMin) async {
     final token = await getToken();
     final response = await http.put(
       Uri.parse('$baseUrl/study/routines/$id'),
@@ -955,10 +1048,118 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception('Failed to update routine');
     }
+    final body = jsonDecode(response.body);
+    return body['data'];
   }
 
   Future<void> deleteStudyRoutine(int id) async {
     final token = await getToken();
-    await http.delete(Uri.parse('$baseUrl/study/routines/$id'), headers: _headers(token));
+    final response = await http.delete(
+      Uri.parse('$baseUrl/study/routines/$id'),
+      headers: _headers(token),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete routine');
+    }
+  }
+
+  // ==========================================
+  // Health & Medicine
+  // ==========================================
+  Future<Map<String, dynamic>> getHealthToday() async {
+    final token = await getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/health/today'),
+      headers: _headers(token),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to get health metrics');
+  }
+
+  Future<Map<String, dynamic>> updateWater(int glasses) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/health/water'),
+      headers: _headers(token),
+      body: jsonEncode({'water_glasses': glasses}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to update water');
+  }
+
+  Future<Map<String, dynamic>> updateSleep(double hours) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/health/sleep'),
+      headers: _headers(token),
+      body: jsonEncode({'sleep_hours': hours}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to update sleep');
+  }
+
+  Future<List<dynamic>> getMedicines() async {
+    final token = await getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/medicines'),
+      headers: _headers(token),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to load medicines');
+  }
+
+  Future<Map<String, dynamic>> addMedicine(String name, String? morning, String? afternoon, String? night, {int? durationDays}) async {
+    final token = await getToken();
+    final body = {
+      'name': name,
+      'morning_time': morning,
+      'afternoon_time': afternoon,
+      'night_time': night,
+    };
+    if (durationDays != null) {
+      body['duration_days'] = durationDays.toString();
+    }
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/medicines'),
+      headers: _headers(token),
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to add medicine');
+  }
+
+  Future<void> deleteMedicine(int id) async {
+    final token = await getToken();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/medicines/$id'),
+      headers: _headers(token),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete medicine');
+    }
+  }
+
+  Future<Map<String, dynamic>> toggleMedicineLog(int id, String period) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/medicines/$id/toggle'),
+      headers: _headers(token),
+      body: jsonEncode({'period': period}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to toggle medicine log');
   }
 }
