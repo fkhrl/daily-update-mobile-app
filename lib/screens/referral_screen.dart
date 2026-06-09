@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../utils/toast_util.dart';
 
 class ReferralScreen extends StatefulWidget {
   const ReferralScreen({super.key});
@@ -189,12 +190,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ElevatedButton.icon(
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: referralCode));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Referral code copied to clipboard!'),
-                                backgroundColor: Color(0xFF6366F1),
-                              ),
-                            );
+                            ToastUtil.showSuccess(context, 'Referral code copied to clipboard!');
                           },
                           icon: const Icon(Icons.copy, size: 16, color: Colors.black),
                           label: const Text('Copy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
@@ -84,6 +85,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           _remind30Min = true;
         } else if (diff == 60) {
           _remind1Hour = true;
+        } else if (diff == 0) {
+          // Default exact-time reminder, ignore for custom UI
         } else {
           _customReminders.add(reminder);
         }
@@ -124,7 +127,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       },
     );
     if (datePicked != null) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       final TimeOfDay? timePicked = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(_selectedDate),
@@ -178,7 +181,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     );
 
     if (datePicked != null) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       final TimeOfDay? timePicked = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(DateTime.now()),
@@ -234,6 +237,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
     // Calculate absolute reminder times
     final List<DateTime> finalReminders = [];
+    
+    // Always include a reminder at the exact task time
+    finalReminders.add(_selectedDate);
     if (_remind5Min) {
       finalReminders.add(_selectedDate.subtract(const Duration(minutes: 5)));
     }
@@ -284,6 +290,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           subtasks: subtaskPayload,
         );
       }
+      if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
       setState(() {
@@ -854,3 +861,4 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     );
   }
 }
+

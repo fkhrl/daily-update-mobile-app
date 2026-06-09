@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../utils/toast_util.dart';
 import '../models/user.dart';
+import 'security_screen.dart';
+import '../services/biometric_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,8 +16,10 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ApiService _apiService = ApiService();
   User? _user;
-  List<dynamic> _sessions = [];
   bool _isLoading = true;
+  bool _isUpdatingQuietHours = false;
+  bool _quietHoursEnabled = true;
+  bool _biometricEnabled = false;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -32,25 +37,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfileData();
+    _loadBiometricSettings();
+  }
+
+  Future<void> _loadBiometricSettings() async {
+    final enabled = await BiometricService.isBiometricEnabled();
+    setState(() {
+      _biometricEnabled = enabled;
+    });
   }
 
   Future<void> _loadProfileData() async {
     setState(() => _isLoading = true);
     try {
       final profile = await _apiService.getProfile();
-      final sessions = await _apiService.getSessions();
       setState(() {
         _user = profile;
-        _sessions = sessions;
         _nameController.text = profile.name;
         _emailController.text = profile.email;
         _phoneController.text = profile.phoneNumber ?? '';
         _telegramController.text = profile.telegramChatId ?? '';
-        _qhStartController.text = profile.quietHoursStart;
-        _qhEndController.text = profile.quietHoursEnd;
+        _qhStartController.text = profile.quietHoursStart ?? '22:00';
+        _qhEndController.text = profile.quietHoursEnd ?? '08:00';
+        _quietHoursEnabled = profile.quietHoursStart != null && profile.quietHoursEnd != null;
       });
     } catch (e) {
-      _showSnackbar('Failed to load profile data: $e');
+      _showSnackbar('Failed to load profile data: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -76,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       _showSnackbar('Profile details updated successfully!');
     } catch (e) {
-      _showSnackbar('Failed to update profile: $e');
+      _showSnackbar('Failed to update profile: $e', isError: true);
     }
   }
 
@@ -112,29 +124,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updatePreferences() async {
+    setState(() => _isUpdatingQuietHours = true);
     try {
-      await _apiService.updateQuietHours(_qhStartController.text, _qhEndController.text);
+      await _apiService.updateQuietHours(
+        _quietHoursEnabled ? _qhStartController.text : null,
+        _quietHoursEnabled ? _qhEndController.text : null,
+      );
       _showSnackbar('Preferences updated successfully!');
-      _loadProfileData();
+      await _loadProfileData();
     } catch (e) {
-      _showSnackbar('Failed to update quiet hours: $e');
+      _showSnackbar('Failed to update quiet hours: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isUpdatingQuietHours = false);
     }
   }
 
-  Future<void> _revokeSession(int id) async {
-    try {
-      await _apiService.revokeSession(id);
-      _showSnackbar('Session revoked.');
-      _loadProfileData();
-    } catch (e) {
-      _showSnackbar('Failed to revoke session: $e');
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
     }
-  }
-
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.indigoAccent, behavior: SnackBarBehavior.floating),
-    );
   }
 
   @override
@@ -358,76 +368,144 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          'Reminders will be suppressed between these hours unless set to Urgent.',
-                          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11),
+                        Material(
+                          type: MaterialType.transparency,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Enable Quiet Hours', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: const Text('If disabled, notifications are ON all the time.', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+                            activeThumbColor: Colors.indigoAccent,
+                            value: _quietHoursEnabled,
+                            onChanged: (val) {
+                              setState(() {
+                                _quietHoursEnabled = val;
+                              });
+                            },
+                          ),
                         ),
-                        const SizedBox(height: 15),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _qhStartController,
-                                style: const TextStyle(color: Colors.white, fontSize: 13),
-                                decoration: const InputDecoration(
-                                  labelText: 'Quiet Hours Start',
-                                  labelStyle: TextStyle(color: Colors.indigoAccent, fontSize: 11),
-                                  hintText: 'e.g. 22:00',
+                        if (_quietHoursEnabled) ...[
+                          const SizedBox(height: 15),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final parts = _qhStartController.text.split(':');
+                                    final initial = TimeOfDay(
+                                      hour: parts.isNotEmpty ? int.tryParse(parts[0]) ?? 22 : 22,
+                                      minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
+                                    );
+                                    final time = await showTimePicker(context: context, initialTime: initial);
+                                    if (time != null) {
+                                      setState(() => _qhStartController.text = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}');
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F172A),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Start Time', style: TextStyle(color: Colors.indigoAccent, fontSize: 11)),
+                                        const SizedBox(height: 4),
+                                        Text(_qhStartController.text, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: TextField(
-                                controller: _qhEndController,
-                                style: const TextStyle(color: Colors.white, fontSize: 13),
-                                decoration: const InputDecoration(
-                                  labelText: 'Quiet Hours End',
-                                  labelStyle: TextStyle(color: Colors.indigoAccent, fontSize: 11),
-                                  hintText: 'e.g. 06:00',
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final parts = _qhEndController.text.split(':');
+                                    final initial = TimeOfDay(
+                                      hour: parts.isNotEmpty ? int.tryParse(parts[0]) ?? 8 : 8,
+                                      minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
+                                    );
+                                    final time = await showTimePicker(context: context, initialTime: initial);
+                                    if (time != null) {
+                                      setState(() => _qhEndController.text = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}');
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F172A),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('End Time', style: TextStyle(color: Colors.indigoAccent, fontSize: 11)),
+                                        const SizedBox(height: 4),
+                                        Text(_qhEndController.text, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 15),
                         ElevatedButton(
-                          onPressed: _updatePreferences,
+                          onPressed: _isUpdatingQuietHours ? null : _updatePreferences,
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent),
-                          child: const Text('Update Quiet Hours', style: TextStyle(fontWeight: FontWeight.bold)),
-                        )
+                          child: _isUpdatingQuietHours
+                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Text('Update Quiet Hours', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                        const SizedBox(height: 20),
+                        const Divider(color: Colors.white24),
+                        Material(
+                          type: MaterialType.transparency,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Enable Biometric Login', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: const Text('Use FaceID or Fingerprint to unlock the app securely.', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11)),
+                            activeThumbColor: Colors.indigoAccent,
+                            value: _biometricEnabled,
+                            onChanged: (val) async {
+                              setState(() {
+                                _biometricEnabled = val;
+                              });
+                              await BiometricService.setBiometricEnabled(val);
+                              _showSnackbar('Biometric setting updated');
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 25),
 
-                  // 5. Active login tokens list
-                  Text('Active User Sessions & Tokens', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.indigoAccent)),
+                  Text('Security', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.indigoAccent)),
                   const SizedBox(height: 10),
-                  if (_sessions.isEmpty)
-                    const Text('No active browser/device tokens found.', style: TextStyle(color: Color(0xFF64748B)))
-                  else
-                    ..._sessions.map((token) => Card(
-                          color: const Color(0xFF1E293B).withValues(alpha: 0.4),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: const Icon(Icons.devices, color: Colors.indigoAccent),
-                            title: Text(token['name'] ?? 'Token API', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                            subtitle: Text(
-                              'Created: ${token['created_at'] != null ? token['created_at'].toString().split("T")[0] : "N/A"}',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                              onPressed: () => _revokeSession(token['id']),
-                            ),
-                          ),
-                        )),
-                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF1E293B)),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.security, color: Colors.indigoAccent),
+                      title: const Text('Security & Sessions', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Manage your active devices and login history', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen()));
+                      },
+                    ),
+                  ),
+
                 ],
               ),
             ),
     );
   }
 }
+

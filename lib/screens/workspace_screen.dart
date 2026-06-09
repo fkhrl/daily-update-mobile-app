@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/toast_util.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../utils/ui_helpers.dart';
@@ -24,6 +25,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   final TextEditingController _wsNameController = TextEditingController();
   final TextEditingController _inviteEmailController = TextEditingController();
   final TextEditingController _commentController = TextEditingController();
+  String _selectedTemplate = 'blank';
 
   @override
   void initState() {
@@ -45,7 +47,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         _loadWorkspaceDetails(_activeWorkspaceId!);
       }
     } catch (e) {
-      _showSnackbar('Failed to load workspaces: $e');
+      _showSnackbar('Failed to load workspaces: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -61,7 +63,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         _activityLogs = logs;
       });
     } catch (e) {
-      _showSnackbar('Failed to load details: $e');
+      _showSnackbar('Failed to load details: $e', isError: true);
     } finally {
       setState(() => _isLoadingDetails = false);
     }
@@ -72,12 +74,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     if (name.isEmpty) return;
 
     try {
-      final ws = await _apiService.createWorkspace(name);
+      await _apiService.createWorkspace(name, templateType: _selectedTemplate == 'blank' ? null : _selectedTemplate);
       _wsNameController.clear();
+      if (!mounted) return;
       Navigator.pop(context);
       _showSnackbar('Workspace created!');
       _loadWorkspaces();
     } catch (e) {
+      if (!mounted) return;
       UIHelpers.showErrorDialog(context, 'Creation Failed', e);
     }
   }
@@ -90,10 +94,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     try {
       await _apiService.inviteWorkspaceMember(_activeWorkspaceId!, email);
       _inviteEmailController.clear();
+      if (!mounted) return;
       Navigator.pop(context);
       _showSnackbar('Team member invited successfully!');
       _loadWorkspaceDetails(_activeWorkspaceId!);
     } catch (e) {
+      if (!mounted) return;
       UIHelpers.showErrorDialog(context, 'Invitation Failed', e);
     }
   }
@@ -105,7 +111,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       _showSnackbar('Left workspace.');
       _loadWorkspaces();
     } catch (e) {
-      _showSnackbar('Failed: $e');
+      _showSnackbar('Failed: $e', isError: true);
     }
   }
 
@@ -147,6 +153,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 });
               }
             } catch (e) {
+              if (!mounted) return;
               UIHelpers.showErrorDialog(context, 'Comment Failed', e);
             }
           }
@@ -230,39 +237,67 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   void _showAddWorkspaceDialog() {
+    _selectedTemplate = 'blank'; // reset
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF1E293B),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 20, left: 20, right: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('New Workspace Name', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _wsNameController,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'e.g. Acme Marketing, Mobile Dev',
-                hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      builder: (ctx) => StatefulBuilder(
+        builder: (stCtx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 20, left: 20, right: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('New Workspace Name', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _wsNameController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'e.g. Acme Marketing, Mobile Dev',
+                  hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _createWorkspace,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent),
-              child: const Text('Create Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 20),
+              Text('Workspace Template', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Blank'),
+                    selected: _selectedTemplate == 'blank',
+                    onSelected: (val) => setSheetState(() => _selectedTemplate = 'blank'),
+                    selectedColor: Colors.indigoAccent,
+                    backgroundColor: const Color(0xFF0F172A),
+                    labelStyle: TextStyle(color: _selectedTemplate == 'blank' ? Colors.white : Colors.white54),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Student Routine (Auto-setup)'),
+                    selected: _selectedTemplate == 'student',
+                    onSelected: (val) => setSheetState(() => _selectedTemplate = 'student'),
+                    selectedColor: Colors.indigoAccent,
+                    backgroundColor: const Color(0xFF0F172A),
+                    labelStyle: TextStyle(color: _selectedTemplate == 'student' ? Colors.white : Colors.white54),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _createWorkspace,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent),
+                child: const Text('Create Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -309,10 +344,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     );
   }
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.indigoAccent, behavior: SnackBarBehavior.floating),
-    );
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
+    }
   }
 
   @override
@@ -512,3 +549,4 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     );
   }
 }
+

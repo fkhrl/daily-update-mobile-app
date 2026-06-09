@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import 'register_screen.dart';
@@ -37,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Sync FCM token to backend
         await NotificationService().syncFcmToken();
         
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
         );
@@ -52,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 errorList.add(value.toString());
               }
             });
-            _errorMessage = errorList.join('\n');
+            _errorMessage = errorList.join('\\n');
           } else {
             _errorMessage = response['message'] ?? 'Login failed';
           }
@@ -61,6 +65,84 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       setState(() {
         _errorMessage = 'An error occurred. Check server connection.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final googleSignIn = GoogleSignIn();
+      final account = await googleSignIn.signIn();
+      if (account != null) {
+        final auth = await account.authentication;
+        if (auth.idToken != null) {
+          final response = await ApiService().loginWithGoogle(auth.idToken!);
+          if (response['success'] == true) {
+            await NotificationService().syncFcmToken();
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+            );
+          } else {
+            setState(() {
+              _errorMessage = response['message'] ?? 'Google Login failed';
+            });
+          }
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Google Sign-In Error: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final response = await ApiService().loginWithApple(
+        credential.identityToken!,
+        credential.userIdentifier!,
+        email: credential.email,
+        name: credential.givenName != null ? '${credential.givenName} ${credential.familyName}' : null,
+      );
+
+      if (response['success'] == true) {
+        await NotificationService().syncFcmToken();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else {
+        setState(() {
+          _errorMessage = response['message'] ?? 'Apple Login failed';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Apple Sign-In Error: $e';
       });
     } finally {
       setState(() {
@@ -262,6 +344,40 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Social Logins
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _loginWithGoogle,
+                              icon: const Icon(Icons.g_mobiledata, size: 28),
+                              label: const Text('Google'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: const BorderSide(color: Colors.white24),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _loginWithApple,
+                              icon: const Icon(Icons.apple, size: 24),
+                              label: const Text('Apple'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: const BorderSide(color: Colors.white24),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
                       // 6. Navigate to register
                       TextButton(
                         onPressed: () {
@@ -285,3 +401,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import 'dashboard_screen.dart';
@@ -39,6 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Sync FCM token to backend
         await NotificationService().syncFcmToken();
         
+        if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
           (route) => false,
@@ -55,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 errorList.add(value.toString());
               }
             });
-            _errorMessage = errorList.join('\n');
+            _errorMessage = errorList.join('\\n');
           } else {
             _errorMessage = response['message'] ?? 'Registration failed';
           }
@@ -306,3 +308,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

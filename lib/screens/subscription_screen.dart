@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/toast_util.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
@@ -29,7 +30,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final u = await _apiService.getProfile();
       setState(() => _user = u);
     } catch (e) {
-      _showSnackbar('Failed to load profile: $e');
+      _showSnackbar('Failed to load profile: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -65,10 +66,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.indigoAccent, behavior: SnackBarBehavior.floating),
-    );
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
+    }
   }
 
   @override
@@ -274,3 +277,4 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 }
+

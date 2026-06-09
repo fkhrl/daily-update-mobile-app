@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/toast_util.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 
@@ -41,7 +42,7 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
         _coachingReport = report;
       });
     } catch (e) {
-      _showSnackbar('Error loading AI advice: $e');
+      _showSnackbar('Error loading AI advice: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -64,14 +65,12 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
     }
   }
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.indigoAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
+    }
   }
 
   @override
@@ -328,3 +327,4 @@ class _AiPlannerScreenState extends State<AiPlannerScreen> {
     );
   }
 }
+

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../utils/toast_util.dart';
 
 class FeedbackDialog extends StatefulWidget {
   const FeedbackDialog({super.key});
@@ -50,12 +51,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
       if (res['success'] == true) {
         if (!mounted) return;
         Navigator.pop(context); // Close dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Feedback submitted successfully. Thank you!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastUtil.showSuccess(context, 'Feedback submitted successfully. Thank you!');
       }
     } catch (e) {
       setState(() {

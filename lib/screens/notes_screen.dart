@@ -1,6 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../utils/toast_util.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class NotesScreen extends StatefulWidget {
   final int? taskId;
@@ -15,16 +21,29 @@ class _NotesScreenState extends State<NotesScreen> {
   List<dynamic> _notes = [];
   bool _isLoading = true;
   final TextEditingController _noteContentController = TextEditingController();
+  final TextEditingController _tagsController = TextEditingController();
+  bool _isMarkdown = true;
   
-  // Audio Mock states
-  bool _isRecording = false;
-  String? _recordedVoicePath;
+  // Speech to Text states
+  bool _isListening = false;
+  late final stt.SpeechToText _speechToText;
+  
+  // Real Image states
   List<String> _selectedImages = [];
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
+    _speechToText = stt.SpeechToText();
     _loadNotes();
+  }
+
+  @override
+  void dispose() {
+    _noteContentController.dispose();
+    _tagsController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadNotes() async {
@@ -33,7 +52,7 @@ class _NotesScreenState extends State<NotesScreen> {
       final data = await _apiService.getNotes(taskId: widget.taskId);
       setState(() => _notes = data);
     } catch (e) {
-      _showSnackbar('Error loading notes: $e');
+      _showSnackbar('Error loading notes: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -41,24 +60,25 @@ class _NotesScreenState extends State<NotesScreen> {
 
   Future<void> _createNote() async {
     final content = _noteContentController.text.trim();
-    if (content.isEmpty && _recordedVoicePath == null && _selectedImages.isEmpty) return;
+    if (content.isEmpty && _selectedImages.isEmpty) return;
 
     try {
       await _apiService.createNote(
         content,
         taskId: widget.taskId,
-        voicePath: _recordedVoicePath,
         images: _selectedImages,
+        isMarkdown: _isMarkdown,
+        tags: _tagsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
       );
       _noteContentController.clear();
+      _tagsController.clear();
       setState(() {
-        _recordedVoicePath = null;
         _selectedImages = [];
       });
       _loadNotes();
       _showSnackbar('Note saved successfully!');
     } catch (e) {
-      _showSnackbar('Failed to save note: $e');
+      _showSnackbar('Failed to save note: $e', isError: true);
     }
   }
 
@@ -70,60 +90,66 @@ class _NotesScreenState extends State<NotesScreen> {
       });
       _showSnackbar('Note deleted.');
     } catch (e) {
-      _showSnackbar('Failed to delete note: $e');
+      _showSnackbar('Failed to delete note: $e', isError: true);
     }
   }
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.indigoAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> images = await _imagePicker.pickMultiImage();
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images.map((e) => e.path));
+        });
+      }
+    } catch (e) {
+      _showSnackbar('Failed to pick images: $e', isError: true);
+    }
   }
 
-  // Render stylized text resembling Markdown
-  Widget _renderMarkdown(String text) {
-    final lines = text.split('\n');
-    List<Widget> children = [];
-
-    for (var line in lines) {
-      if (line.startsWith('# ')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: Text(
-            line.substring(2),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigoAccent),
-          ),
-        ));
-      } else if (line.startsWith('- ')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(left: 8, top: 2, bottom: 2),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('• ', style: TextStyle(color: Colors.white, fontSize: 16)),
-              Expanded(
-                child: Text(line.substring(2), style: const TextStyle(color: Colors.white70, fontSize: 14)),
-              ),
-            ],
-          ),
-        ));
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      _speechToText.stop();
+      setState(() => _isListening = false);
+    } else {
+      bool available = await _speechToText.initialize(
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (errorNotification) {
+          _showSnackbar('Speech recognition error: ${errorNotification.errorMsg}', isError: true);
+          setState(() => _isListening = false);
+        },
+      );
+      
+      if (available) {
+        setState(() => _isListening = true);
+        _speechToText.listen(
+          onResult: (result) {
+            setState(() {
+              // Append to existing text or replace it
+              // We'll append it
+              _noteContentController.text = "${_noteContentController.text} ${result.recognizedWords}".trimLeft();
+            });
+          },
+        );
       } else {
-        children.add(Padding(
-          padding: const EdgeInsets.only(top: 3, bottom: 3),
-          child: Text(line, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-        ));
+        _showSnackbar('Speech recognition not available', isError: true);
       }
     }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
   }
+
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -162,29 +188,30 @@ class _NotesScreenState extends State<NotesScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                // Audio Mock / Image previews list
-                if (_recordedVoicePath != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.indigoAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _tagsController,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        decoration: const InputDecoration(
+                          hintText: 'Tags (comma separated)',
+                          hintStyle: TextStyle(color: Color(0xFF64748B)),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.mic, color: Colors.indigoAccent, size: 18),
-                        const SizedBox(width: 8),
-                        const Text('Voice Note attachment saved (Simulated)', style: TextStyle(color: Colors.indigoAccent, fontSize: 12)),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () => setState(() => _recordedVoicePath = null),
-                          child: const Icon(Icons.close, color: Colors.redAccent, size: 16),
-                        )
-                      ],
+                    const SizedBox(width: 8),
+                    const Text('Markdown', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Switch(
+                      value: _isMarkdown,
+                      onChanged: (val) => setState(() => _isMarkdown = val),
+                      activeThumbColor: Colors.indigoAccent,
                     ),
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 10),
 
                 if (_selectedImages.isNotEmpty)
                   SizedBox(
@@ -201,8 +228,13 @@ class _NotesScreenState extends State<NotesScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF1E293B),
                               borderRadius: BorderRadius.circular(8),
+                              image: DecorationImage(
+                                image: kIsWeb 
+                                    ? NetworkImage(_selectedImages[idx]) as ImageProvider
+                                    : FileImage(File(_selectedImages[idx])),
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                            child: const Icon(Icons.image, color: Colors.indigoAccent),
                           ),
                           Positioned(
                             top: 0,
@@ -224,33 +256,17 @@ class _NotesScreenState extends State<NotesScreen> {
                 // Attachments Controls
                 Row(
                   children: [
-                    // Mock voice record
+                    // Voice record
                     IconButton(
-                      onPressed: () {
-                        setState(() {
-                          if (_isRecording) {
-                            _isRecording = false;
-                            _recordedVoicePath = "voice_notes/simulated_audio_${DateTime.now().millisecond}.mp3";
-                            _showSnackbar("Voice recording completed (Simulated)");
-                          } else {
-                            _isRecording = true;
-                            _showSnackbar("Recording started... Click again to stop");
-                          }
-                        });
-                      },
+                      onPressed: _toggleListening,
                       icon: Icon(
-                        _isRecording ? Icons.fiber_manual_record : Icons.mic_none,
-                        color: _isRecording ? Colors.redAccent : const Color(0xFF94A3B8),
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: _isListening ? Colors.redAccent : const Color(0xFF94A3B8),
                       ),
                     ),
-                    // Mock image picker
+                    // Image picker
                     IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedImages.add("notes_images/simulated_img_${DateTime.now().millisecond}.png");
-                          _showSnackbar("Mock image attached.");
-                        });
-                      },
+                      onPressed: _pickImages,
                       icon: const Icon(Icons.image_outlined, color: Color(0xFF94A3B8)),
                     ),
                     const Spacer(),
@@ -284,7 +300,6 @@ class _NotesScreenState extends State<NotesScreen> {
                         itemCount: _notes.length,
                         itemBuilder: (ctx, idx) {
                           final note = _notes[idx];
-                          final hasVoice = note['voice_note_path'] != null;
                           final imagesList = note['images'] as List?;
 
                           return Container(
@@ -316,42 +331,69 @@ class _NotesScreenState extends State<NotesScreen> {
                                 const SizedBox(height: 5),
 
                                 // Text Render
-                                _renderMarkdown(note['content'] ?? ''),
+                                (note['is_markdown'] == 1 || note['is_markdown'] == true) 
+                                    ? MarkdownBody(
+                                        data: note['content'] ?? '',
+                                        styleSheet: MarkdownStyleSheet(
+                                          p: const TextStyle(color: Colors.white70, fontSize: 14),
+                                          h1: const TextStyle(color: Colors.indigoAccent, fontSize: 18, fontWeight: FontWeight.bold),
+                                          listBullet: const TextStyle(color: Colors.white),
+                                        ),
+                                      )
+                                    : Text(note['content'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 14)),
                                 const SizedBox(height: 10),
-
-                                // Voice player UI if exists
-                                if (hasVoice)
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0F172A),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Icon(Icons.play_circle_fill, color: Colors.indigoAccent, size: 24),
-                                        SizedBox(width: 8),
-                                        Text('Play voice note attachment', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                                      ],
-                                    ),
-                                  ),
 
                                 // Image list attachments preview
                                 if (imagesList != null && imagesList.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
+                                    padding: const EdgeInsets.only(top: 12.0),
                                     child: Wrap(
-                                      spacing: 6,
-                                      children: imagesList.map((img) => Container(
-                                        width: 60,
-                                        height: 60,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF0F172A),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: const Color(0xFF1E293B)),
-                                        ),
-                                        child: const Icon(Icons.image, color: Colors.indigoAccent, size: 24),
-                                      )).toList(),
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: imagesList.map((img) {
+                                        final imageUrl = "${ApiService.baseUrl.replaceFirst('/api', '/storage')}/$img";
+                                        return GestureDetector(
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (_) => Dialog(
+                                                backgroundColor: Colors.transparent,
+                                                insetPadding: const EdgeInsets.all(10),
+                                                child: Stack(
+                                                  alignment: Alignment.topRight,
+                                                  children: [
+                                                    InteractiveViewer(
+                                                      panEnabled: true,
+                                                      minScale: 0.5,
+                                                      maxScale: 4,
+                                                      child: Image.network(imageUrl, fit: BoxFit.contain),
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                                                      onPressed: () => Navigator.pop(context),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              imageUrl,
+                                              width: 80,
+                                              height: 80,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                width: 80,
+                                                height: 80,
+                                                color: const Color(0xFF0F172A),
+                                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
                                     ),
                                   ),
                               ],

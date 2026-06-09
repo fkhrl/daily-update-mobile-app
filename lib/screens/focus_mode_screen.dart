@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 class FocusModeScreen extends StatefulWidget {
   const FocusModeScreen({super.key});
 
@@ -11,7 +11,7 @@ class FocusModeScreen extends StatefulWidget {
 
 class _FocusModeScreenState extends State<FocusModeScreen> {
   static const int workSeconds = 25 * 60;
-  static const int breakSeconds = 5 * 60;
+  int _breakSeconds = 5 * 60;
 
   int _totalSeconds = workSeconds;
   int _secondsRemaining = workSeconds;
@@ -19,6 +19,8 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   bool _isRunning = false;
   bool _isWorkSession = true;
   int _completedSessions = 0;
+  bool _hasShown5MinWarning = false;
+  bool _hasShown1MinWarning = false;
 
   void _startPauseTimer() {
     if (_isRunning) {
@@ -29,6 +31,19 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (_secondsRemaining > 0) {
           setState(() => _secondsRemaining--);
+          
+          // 5-minute warning
+          if (_isWorkSession && _secondsRemaining == 300 && !_hasShown5MinWarning) {
+            _hasShown5MinWarning = true;
+            _showAddMoreTimeDialog();
+          }
+
+          // 1-minute warning
+          if (_secondsRemaining == 60 && !_hasShown1MinWarning) {
+            _hasShown1MinWarning = true;
+            FlutterRingtonePlayer().playNotification();
+          }
+
         } else {
           _timer?.cancel();
           _onSessionComplete();
@@ -40,12 +55,14 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   void _onSessionComplete() {
     setState(() {
       _isRunning = false;
+      _hasShown5MinWarning = false;
+      _hasShown1MinWarning = false;
       if (_isWorkSession) {
         _completedSessions++;
         _isWorkSession = false;
-        _totalSeconds = breakSeconds;
-        _secondsRemaining = breakSeconds;
-        _showDialog("Session Completed!", "Time for a 5-minute break. Rest up!");
+        _totalSeconds = _breakSeconds;
+        _secondsRemaining = _breakSeconds;
+        _showDialog("Session Completed!", "Time for a ${_breakSeconds ~/ 60}-minute break. Rest up!");
       } else {
         _isWorkSession = true;
         _totalSeconds = workSeconds;
@@ -62,6 +79,8 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
       _isWorkSession = true;
       _totalSeconds = workSeconds;
       _secondsRemaining = workSeconds;
+      _hasShown5MinWarning = false;
+      _hasShown1MinWarning = false;
     });
   }
 
@@ -78,6 +97,115 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
             child: const Text("Let's Go", style: TextStyle(color: Colors.indigoAccent)),
           )
         ],
+      ),
+    );
+  }
+
+  void _showAddMoreTimeDialog() {
+    _timer?.cancel();
+    setState(() => _isRunning = false);
+    FlutterRingtonePlayer().playAlarm();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text("5 Minutes Left!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text("You have 5 minutes remaining. Would you like to add more time?", style: TextStyle(color: Color(0xFFCBD5E1))),
+        actions: [
+          TextButton(
+            onPressed: () {
+              FlutterRingtonePlayer().stop();
+              Navigator.pop(ctx);
+              setState(() {
+                _totalSeconds += 5 * 60;
+                _secondsRemaining += 5 * 60;
+              });
+              _startPauseTimer();
+            },
+            child: const Text("+ 5 Min", style: TextStyle(color: Colors.indigoAccent)),
+          ),
+          TextButton(
+            onPressed: () {
+              FlutterRingtonePlayer().stop();
+              Navigator.pop(ctx);
+              setState(() {
+                _totalSeconds += 10 * 60;
+                _secondsRemaining += 10 * 60;
+              });
+              _startPauseTimer();
+            },
+            child: const Text("+ 10 Min", style: TextStyle(color: Colors.indigoAccent)),
+          ),
+          TextButton(
+            onPressed: () {
+              FlutterRingtonePlayer().stop();
+              Navigator.pop(ctx);
+              _startPauseTimer();
+            },
+            child: const Text("Keep Going", style: TextStyle(color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSettingsDialog() {
+    int tempBreak = _breakSeconds;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            title: const Text("Timer Settings", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Break Duration", style: TextStyle(color: Color(0xFFCBD5E1))),
+                const SizedBox(height: 10),
+                DropdownButton<int>(
+                  value: tempBreak,
+                  dropdownColor: const Color(0xFF0F172A),
+                  style: const TextStyle(color: Colors.white),
+                  isExpanded: true,
+                  items: [5, 10, 15, 20, 30].map((int mins) {
+                    return DropdownMenuItem<int>(
+                      value: mins * 60,
+                      child: Text("$mins minutes"),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => tempBreak = val);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cancel", style: TextStyle(color: Colors.white70)),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _breakSeconds = tempBreak;
+                    if (!_isWorkSession && !_isRunning && _secondsRemaining == _totalSeconds) {
+                       _totalSeconds = _breakSeconds;
+                       _secondsRemaining = _breakSeconds;
+                    }
+                  });
+                  Navigator.pop(ctx);
+                },
+                child: const Text("Save", style: TextStyle(color: Colors.indigoAccent)),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
@@ -104,6 +232,12 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
         title: Text('Focus Mode & Pomodoro', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white70),
+            onPressed: _showSettingsDialog,
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(

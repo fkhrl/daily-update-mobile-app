@@ -7,7 +7,7 @@ import '../screens/task_form_screen.dart';
 class AiAssistantBottomSheet extends StatefulWidget {
   final VoidCallback onTaskCreated;
 
-  const AiAssistantBottomSheet({Key? key, required this.onTaskCreated}) : super(key: key);
+  const AiAssistantBottomSheet({super.key, required this.onTaskCreated});
 
   @override
   State<AiAssistantBottomSheet> createState() => _AiAssistantBottomSheetState();
@@ -227,8 +227,9 @@ class _AiAssistantBottomSheetState extends State<AiAssistantBottomSheet> {
                       });
 
                       try {
-                        final data = await ApiService().parseTaskWithAi(text);
-                        if (!mounted) return;
+                        final String timeContext = " (Note: The user's current local date and time is ${DateTime.now().toIso8601String()})";
+                        final data = await ApiService().parseTaskWithAi(text + timeContext);
+                        if (!context.mounted) return;
                         Navigator.pop(context); // Close sheet
 
                         // Create dummy Task object with id: 0
@@ -252,6 +253,7 @@ class _AiAssistantBottomSheetState extends State<AiAssistantBottomSheet> {
                         );
 
                         // Navigate to TaskFormScreen with prefilled task
+                        if (!context.mounted) return;
                         final result = await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => TaskFormScreen(task: parsedTask),

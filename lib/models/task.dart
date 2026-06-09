@@ -72,7 +72,7 @@ class Task {
   static DateTime _parseDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return DateTime.now();
     if (!dateStr.endsWith('Z') && !dateStr.contains('+') && !dateStr.contains(RegExp(r'-[0-9]{2}:[0-9]{2}$'))) {
-      dateStr = dateStr.replaceAll(' ', 'T') + 'Z';
+      dateStr = '${dateStr.replaceAll(' ', 'T')}Z';
     }
     return DateTime.parse(dateStr).toLocal();
   }

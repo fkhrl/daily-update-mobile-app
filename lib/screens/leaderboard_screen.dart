@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/toast_util.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 
@@ -31,16 +32,18 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         _leaderboard = usersList;
       });
     } catch (e) {
-      _showSnackbar('Error loading achievements: $e');
+      _showSnackbar('Error loading achievements: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.indigoAccent, behavior: SnackBarBehavior.floating),
-    );
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
+    }
   }
 
   IconData _getIconData(String name) {
@@ -207,3 +210,4 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     );
   }
 }
+

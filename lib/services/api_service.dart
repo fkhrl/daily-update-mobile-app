@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/task.dart';
@@ -81,6 +82,43 @@ class ApiService {
     return data;
   }
 
+  Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/google'),
+      headers: _headers(null),
+      body: jsonEncode({
+        'id_token': idToken,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      final token = data['data']['access_token'];
+      await _saveToken(token);
+    }
+    return data;
+  }
+
+  Future<Map<String, dynamic>> loginWithApple(String identityToken, String userId, {String? email, String? name}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/apple'),
+      headers: _headers(null),
+      body: jsonEncode({
+        'identity_token': identityToken,
+        'user_id': userId,
+        if (email != null) 'email': email,
+        if (name != null) 'name': name,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      final token = data['data']['access_token'];
+      await _saveToken(token);
+    }
+    return data;
+  }
+
   Future<Map<String, dynamic>> logout() async {
     final token = await getToken();
     if (token == null) return {'success': true};
@@ -94,12 +132,35 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
-  // Scoped by Workspace if workspaceId is provided
-  Future<List<Task>> getTasks({int? workspaceId}) async {
+  Future<Map<String, dynamic>> getUser() async {
     final token = await getToken();
-    String url = '$baseUrl/tasks';
+    if (token == null) throw Exception('No token found');
+    final response = await http.get(
+      Uri.parse('$baseUrl/user'),
+      headers: _headers(token),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        return data['data'];
+      }
+    }
+    throw Exception('Failed to fetch user data');
+  }
+
+  // Scoped by Workspace if workspaceId is provided, also handles pagination and tabs
+  Future<Map<String, dynamic>> getTasks({int? workspaceId, String? tab, int page = 1, String? localDate}) async {
+    final token = await getToken();
+    String url = '$baseUrl/tasks?page=$page';
     if (workspaceId != null) {
-      url += '?workspace_id=$workspaceId';
+      url += '&workspace_id=$workspaceId';
+    }
+    if (tab != null) {
+      url += '&tab=$tab';
+    }
+    if (localDate != null) {
+      url += '&local_date=$localDate';
     }
     final response = await http.get(
       Uri.parse(url),
@@ -109,12 +170,21 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data['success'] == true) {
-        final List<dynamic> list = data['data'];
-        return list.map((item) => Task.fromJson(item)).toList();
+        final paginationData = data['data'];
+        final List<dynamic> list = paginationData['data'] ?? paginationData;
+        final tasks = list.map((item) => Task.fromJson(item)).toList();
+        
+        return {
+          'tasks': tasks,
+          'current_page': paginationData['current_page'] ?? 1,
+          'last_page': paginationData['last_page'] ?? 1,
+        };
       }
     }
     throw Exception('Failed to load tasks');
   }
+
+
 
   Future<Task> createTask(
     String title,
@@ -201,6 +271,20 @@ class ApiService {
       return data; // Return full map containing newly_earned_badges
     }
     throw Exception(data['message'] ?? 'Failed to update task');
+  }
+
+  Future<Map<String, dynamic>> getDashboardMetrics() async {
+    final token = await getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/dashboard'),
+      headers: _headers(token),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return json['data'] ?? {};
+    }
+    return {};
   }
 
   Future<void> deleteTask(int id) async {
@@ -318,12 +402,19 @@ class ApiService {
     throw Exception(data['message'] ?? 'Failed to load habits');
   }
 
-  Future<Map<String, dynamic>> createHabit(String name, {String frequency = 'daily'}) async {
+  Future<Map<String, dynamic>> createHabit(String name, {String frequency = 'daily', String difficulty = 'medium', String timeOfDay = 'anytime', String? color, String? reminderTime}) async {
     final token = await getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/habits'),
       headers: _headers(token),
-      body: jsonEncode({'name': name, 'frequency': frequency}),
+      body: jsonEncode({
+        'name': name,
+        'frequency': frequency,
+        'difficulty': difficulty,
+        'time_of_day': timeOfDay,
+        if (color != null) 'color': color,
+        if (reminderTime != null) 'reminder_time': reminderTime,
+      }),
     );
     final data = jsonDecode(response.body);
     if (response.statusCode == 201 && data['success'] == true) {
@@ -373,19 +464,53 @@ class ApiService {
     throw Exception(data['message'] ?? 'Failed to load notes');
   }
 
-  Future<Map<String, dynamic>> createNote(String content, {int? taskId, String? voicePath, List<String>? images}) async {
+  Future<http.MultipartFile> _getMultipartFile(String field, String path) async {
+    if (kIsWeb) {
+      final response = await http.get(Uri.parse(path));
+      return http.MultipartFile.fromBytes(field, response.bodyBytes, filename: 'upload_${DateTime.now().millisecondsSinceEpoch}');
+    } else {
+      return await http.MultipartFile.fromPath(field, path);
+    }
+  }
+
+  Future<Map<String, dynamic>> createNote(String content, {int? taskId, String? voicePath, List<String>? images, bool isMarkdown = false, List<String>? tags, String? color}) async {
     final token = await getToken();
-    final response = await http.post(
-      Uri.parse('$baseUrl/notes'),
-      headers: _headers(token),
-      body: jsonEncode({
-        'content': content,
-        if (taskId != null) 'task_id': taskId,
-        if (voicePath != null) 'voice_note_path': voicePath,
-        if (images != null) 'images': images,
-      }),
-    );
+    
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/notes'));
+    request.headers.addAll({
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    
+    request.fields['content'] = content;
+    request.fields['is_markdown'] = isMarkdown ? '1' : '0';
+    if (color != null) {
+      request.fields['color'] = color;
+    }
+    if (tags != null && tags.isNotEmpty) {
+      for (int i = 0; i < tags.length; i++) {
+        request.fields['tags[$i]'] = tags[i];
+      }
+    }
+
+    if (taskId != null) {
+      request.fields['task_id'] = taskId.toString();
+    }
+
+    if (voicePath != null) {
+      request.files.add(await _getMultipartFile('voice_note', voicePath));
+    }
+
+    if (images != null) {
+      for (var imgPath in images) {
+        request.files.add(await _getMultipartFile('images[]', imgPath));
+      }
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
     final data = jsonDecode(response.body);
+
     if (response.statusCode == 201 && data['success'] == true) {
       return data['data'];
     }
@@ -462,12 +587,15 @@ class ApiService {
     throw Exception('Failed to load workspaces');
   }
 
-  Future<Map<String, dynamic>> createWorkspace(String name) async {
+  Future<Map<String, dynamic>> createWorkspace(String name, {String? templateType}) async {
     final token = await getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/workspaces'),
       headers: _headers(token),
-      body: jsonEncode({'name': name}),
+      body: jsonEncode({
+        'name': name,
+        if (templateType != null) 'template_type': templateType,
+      }),
     );
     final data = jsonDecode(response.body);
     if (response.statusCode == 201 && data['success'] == true) {
@@ -563,12 +691,27 @@ class ApiService {
     }
   }
 
-  Future<void> updateQuietHours(String start, String end) async {
+  Future<List<dynamic>> getLoginHistory() async {
     final token = await getToken();
+    final response = await http.get(Uri.parse('$baseUrl/user/login-history'), headers: _headers(token));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data['data'];
+    }
+    return [];
+  }
+
+  Future<void> updateQuietHours(String? start, String? end) async {
+    final token = await getToken();
+    final url = Uri.parse('$baseUrl/user/quiet-hours');
     final response = await http.post(
-      Uri.parse('$baseUrl/user/quiet-hours'),
-      headers: _headers(token),
-      body: jsonEncode({'quiet_hours_start': start, 'quiet_hours_end': end}),
+      url,
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: jsonEncode({
+        'quiet_hours_enabled': start != null && end != null,
+        'quiet_hours_start': start, 
+        'quiet_hours_end': end
+      }),
     );
     final data = jsonDecode(response.body);
     if (response.statusCode != 200 || data['success'] != true) {
@@ -638,6 +781,20 @@ class ApiService {
     throw Exception(data['message'] ?? 'Failed to update profile');
   }
 
+  Future<Map<String, dynamic>> completeOnboarding(String role, String goal) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/onboarding'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'role': role,
+        'goal': goal,
+      }),
+    );
+
+    return jsonDecode(response.body);
+  }
+
   Future<void> resetPassword(String currentPassword, String newPassword) async {
     final token = await getToken();
     final response = await http.post(
@@ -677,5 +834,131 @@ class ApiService {
       }),
     );
     return jsonDecode(response.body);
+  }
+
+  Future<void> reportCrash(String errorMessage, String? stackTrace) async {
+    final token = await getToken();
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/crash-report'),
+        headers: _headers(token),
+        body: jsonEncode({
+          'error_message': errorMessage,
+          'stack_trace': stackTrace,
+        }),
+      );
+    } catch (e) {
+      // Ignore errors here to avoid loop
+    }
+  }
+
+  // ==================== STUDY MODULE ====================
+
+  Future<Map<String, dynamic>> getStudyDashboard() async {
+    final token = await getToken();
+    final response = await http.get(Uri.parse('$baseUrl/study/dashboard'), headers: _headers(token));
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data['data'];
+    }
+    throw Exception('Failed to load study dashboard');
+  }
+
+  Future<void> createExam(String title, String subject, String date) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/study/exams'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'title': title,
+        'subject': subject,
+        'exam_date': date,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create exam');
+    }
+  }
+
+  Future<void> deleteExam(int id) async {
+    final token = await getToken();
+    await http.delete(Uri.parse('$baseUrl/study/exams/$id'), headers: _headers(token));
+  }
+
+  Future<void> createStudyTopic(String subject, String topic) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/study/topics'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'subject': subject,
+        'topic_name': topic,
+        'confidence_level': 'medium'
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create topic');
+    }
+  }
+
+  Future<void> deleteStudyTopic(int id) async {
+    final token = await getToken();
+    await http.delete(Uri.parse('$baseUrl/study/topics/$id'), headers: _headers(token));
+  }
+
+  Future<void> reviseTopic(int id, {String? confidence}) async {
+    final token = await getToken();
+    final body = confidence != null ? jsonEncode({'confidence_level': confidence}) : null;
+    final response = await http.post(
+      Uri.parse('$baseUrl/study/topics/$id/revise'),
+      headers: _headers(token),
+      body: body,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to revise topic');
+    }
+  }
+
+  Future<void> createStudyRoutine(String dayOfWeek, String subject, String? startTime, int readingMin, int writingMin, int mcqMin) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/study/routines'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'day_of_week': dayOfWeek,
+        'subject': subject,
+        if (startTime != null) 'start_time': startTime,
+        'reading_minutes': readingMin,
+        'writing_minutes': writingMin,
+        'mcq_minutes': mcqMin
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create routine');
+    }
+  }
+
+  Future<void> updateStudyRoutine(int id, String dayOfWeek, String subject, String? startTime, int readingMin, int writingMin, int mcqMin) async {
+    final token = await getToken();
+    final response = await http.put(
+      Uri.parse('$baseUrl/study/routines/$id'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'day_of_week': dayOfWeek,
+        'subject': subject,
+        'start_time': startTime,
+        'reading_minutes': readingMin,
+        'writing_minutes': writingMin,
+        'mcq_minutes': mcqMin
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update routine');
+    }
+  }
+
+  Future<void> deleteStudyRoutine(int id) async {
+    final token = await getToken();
+    await http.delete(Uri.parse('$baseUrl/study/routines/$id'), headers: _headers(token));
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shake/shake.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
@@ -72,9 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     });
 
     try {
-      final tasks = await ApiService().getTasks();
+      final tasksData = await ApiService().getTasks();
       setState(() {
-        _tasks = tasks;
+        _tasks = tasksData['tasks'] as List<Task>;
       });
     } catch (e) {
       setState(() {
@@ -93,13 +92,17 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       setState(() {
         _tasks.removeWhere((t) => t.id == id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Task deleted successfully')),
       );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error deleting task: $e')),
       );
+      }
     }
   }
 
@@ -110,6 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     try {
       final res = await ApiService().triggerNotifications();
       _loadTasks(); // Reload to see updated notification status
+      if (!mounted) return;
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -125,6 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error triggering notification: $e')),
       );
@@ -197,11 +202,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return ReorderableListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: tasks.length,
-      onReorder: (oldIndex, newIndex) async {
+      onReorderItem: (oldIndex, newIndex) async {
         setState(() {
-          if (newIndex > oldIndex) {
-            newIndex -= 1;
-          }
           final Task item = tasks.removeAt(oldIndex);
           tasks.insert(newIndex, item);
 
@@ -227,9 +229,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         try {
           await ApiService().reorderTasks(orderedIds);
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to reorder: $e')),
           );
+          }
           _loadTasks();
         }
       },
@@ -650,6 +654,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   onTap: () async {
                     Navigator.pop(context);
                     await ApiService().logout();
+                    if (!context.mounted) return;
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                     );
@@ -696,6 +701,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 icon: const Icon(Icons.logout),
                 onPressed: () async {
                   await ApiService().logout();
+                  if (!context.mounted) return;
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );

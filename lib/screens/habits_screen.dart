@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../utils/toast_util.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../utils/ui_helpers.dart';
 
 class HabitsScreen extends StatefulWidget {
-  const HabitsScreen({Key? key}) : super(key: key);
+  const HabitsScreen({super.key});
 
   @override
   State<HabitsScreen> createState() => _HabitsScreenState();
@@ -15,6 +16,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
   List<dynamic> _habits = [];
   bool _isLoading = true;
   final TextEditingController _habitNameController = TextEditingController();
+  String _selectedDifficulty = 'medium';
+  String _selectedTimeOfDay = 'anytime';
 
   @override
   void initState() {
@@ -28,7 +31,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       final data = await _apiService.getHabits();
       setState(() => _habits = data);
     } catch (e) {
-      _showSnackbar('Error loading habits: $e');
+      _showSnackbar('Error loading habits: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -45,7 +48,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       });
       _showSnackbar('Habit progress updated!');
     } catch (e) {
-      _showSnackbar('Failed to update habit: $e');
+      _showSnackbar('Failed to update habit: $e', isError: true);
     }
   }
 
@@ -57,7 +60,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       });
       _showSnackbar('Habit deleted.');
     } catch (e) {
-      _showSnackbar('Failed to delete habit: $e');
+      _showSnackbar('Failed to delete habit: $e', isError: true);
     }
   }
 
@@ -66,14 +69,22 @@ class _HabitsScreenState extends State<HabitsScreen> {
     if (name.isEmpty) return;
 
     try {
-      final newHabit = await _apiService.createHabit(name);
+      final newHabit = await _apiService.createHabit(
+        name,
+        difficulty: _selectedDifficulty,
+        timeOfDay: _selectedTimeOfDay,
+      );
       setState(() {
         _habits.add(newHabit);
       });
       _habitNameController.clear();
+      _selectedDifficulty = 'medium';
+      _selectedTimeOfDay = 'anytime';
+      if (!mounted) return;
       Navigator.pop(context);
       _showSnackbar('Habit created successfully!');
     } catch (e) {
+      if (!mounted) return;
       UIHelpers.showErrorDialog(context, 'Creation Failed', e);
     }
   }
@@ -121,6 +132,52 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 15),
+            Text('Difficulty', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            StatefulBuilder(builder: (c, setLocalState) {
+              return Wrap(
+                spacing: 8,
+                children: ['easy', 'medium', 'hard'].map((level) {
+                  return ChoiceChip(
+                    label: Text(level.toUpperCase()),
+                    selected: _selectedDifficulty == level,
+                    onSelected: (val) {
+                      if (val) {
+                        setLocalState(() => _selectedDifficulty = level);
+                        _selectedDifficulty = level; // update outer state
+                      }
+                    },
+                    selectedColor: Colors.indigoAccent,
+                    backgroundColor: const Color(0xFF0F172A),
+                    labelStyle: TextStyle(color: _selectedDifficulty == level ? Colors.white : Colors.white54, fontSize: 11),
+                  );
+                }).toList(),
+              );
+            }),
+            const SizedBox(height: 15),
+            Text('Time of Day', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            StatefulBuilder(builder: (c, setLocalState) {
+              return Wrap(
+                spacing: 8,
+                children: ['morning', 'afternoon', 'evening', 'anytime'].map((time) {
+                  return ChoiceChip(
+                    label: Text(time.toUpperCase()),
+                    selected: _selectedTimeOfDay == time,
+                    onSelected: (val) {
+                      if (val) {
+                        setLocalState(() => _selectedTimeOfDay = time);
+                        _selectedTimeOfDay = time;
+                      }
+                    },
+                    selectedColor: Colors.indigoAccent,
+                    backgroundColor: const Color(0xFF0F172A),
+                    labelStyle: TextStyle(color: _selectedTimeOfDay == time ? Colors.white : Colors.white54, fontSize: 11),
+                  );
+                }).toList(),
+              );
+            }),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _createHabit,
@@ -140,14 +197,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
     );
   }
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.indigoAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showSnackbar(String msg, {bool isError = false}) {
+    if (isError) {
+      ToastUtil.showError(context, msg);
+    } else {
+      ToastUtil.showSuccess(context, msg);
+    }
   }
 
   @override
@@ -174,7 +229,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     children: [
                       const Text(
                         'No habits tracked yet 🪴',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 16),
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 16),
                       ),
                       const SizedBox(height: 15),
                       ElevatedButton.icon(
@@ -191,17 +246,20 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   itemCount: _habits.length,
                   itemBuilder: (ctx, idx) {
                     final habit = _habits[idx];
-                    final bool completedToday = habit['is_completed_today'] ?? false;
-                    final int streak = habit['streak_count'] ?? 0;
+                    final bool completedToday = habit['is_completed_today'] == true || 
+                                                habit['is_completed_today'] == 1 || 
+                                                habit['is_completed_today'] == '1';
+                    final int streak = int.tryParse(habit['streak_count']?.toString() ?? '0') ?? 0;
+                    final int habitId = int.tryParse(habit['id']?.toString() ?? '0') ?? 0;
 
                     return Card(
-                      color: const Color(0xFF1E293B).withOpacity(0.6),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.6),
                       margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                         side: BorderSide(
                           color: completedToday
-                              ? const Color(0xFF10B981).withOpacity(0.3)
+                              ? const Color(0xFF10B981).withValues(alpha: 0.3)
                               : const Color(0xFF1E293B),
                         ),
                       ),
@@ -211,14 +269,14 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           children: [
                             // Checkbox toggle
                             InkWell(
-                              onTap: () => _toggleHabit(habit['id']),
+                              onTap: () => _toggleHabit(habitId),
                               child: Container(
                                 width: 28,
                                 height: 28,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: completedToday
-                                      ? const Color(0xFF10B981).withOpacity(0.2)
+                                      ? const Color(0xFF10B981).withValues(alpha: 0.2)
                                       : Colors.transparent,
                                   border: Border.all(
                                     color: completedToday ? const Color(0xFF10B981) : const Color(0xFF475569),
@@ -247,9 +305,22 @@ class _HabitsScreenState extends State<HabitsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    'Frequency: ${habit['frequency'] ?? 'daily'}',
-                                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                  Wrap(
+                                    spacing: 6,
+                                    children: [
+                                      Text(
+                                        'Freq: ${habit['frequency'] ?? 'daily'}',
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                      ),
+                                      Text(
+                                        'Diff: ${habit['difficulty'] ?? 'medium'}',
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                      ),
+                                      Text(
+                                        'Time: ${habit['time_of_day'] ?? 'anytime'}',
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -259,7 +330,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: streak > 0 ? Colors.orange.withOpacity(0.15) : const Color(0xFF1E293B),
+                                color: streak > 0 ? Colors.orange.withValues(alpha: 0.15) : const Color(0xFF1E293B),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -284,7 +355,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
                             // Delete button
                             IconButton(
-                              onPressed: () => _deleteHabit(habit['id']),
+                              onPressed: () => _deleteHabit(habitId),
                               icon: const Icon(Icons.delete_outline, color: Color(0xFF475569), size: 20),
                             ),
                           ],
@@ -296,3 +367,4 @@ class _HabitsScreenState extends State<HabitsScreen> {
     );
   }
 }
+

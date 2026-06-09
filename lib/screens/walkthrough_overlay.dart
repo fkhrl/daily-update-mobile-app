@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class WalkthroughOverlay extends StatefulWidget {
   final VoidCallback onDismissed;
-  const WalkthroughOverlay({Key? key, required this.onDismissed}) : super(key: key);
+  const WalkthroughOverlay({super.key, required this.onDismissed});
 
   @override
   State<WalkthroughOverlay> createState() => _WalkthroughOverlayState();
@@ -53,7 +53,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay> {
     final step = _steps[_currentStep];
 
     return Material(
-      color: Colors.black.withOpacity(0.75),
+      color: Colors.black.withValues(alpha: 0.75),
       child: Center(
         child: Container(
           width: 300,
@@ -61,7 +61,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay> {
           decoration: BoxDecoration(
             color: const Color(0xFF1E293B),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.indigoAccent.withOpacity(0.3)),
+            border: Border.all(color: Colors.indigoAccent.withValues(alpha: 0.3)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
