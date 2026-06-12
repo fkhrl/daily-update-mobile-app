@@ -103,13 +103,17 @@ class _NotesScreenState extends State<NotesScreen> {
     setState(() => _isSummarizing[noteId] = true);
     try {
       final summaryData = await _apiService.summarizeNote(content);
+      if (!mounted) return;
       setState(() {
         _summaries[noteId] = summaryData['summary'] ?? 'No summary available.';
       });
     } catch (e) {
+      if (!mounted) return;
       _showSnackbar('Failed to summarize: $e', isError: true);
     } finally {
-      setState(() => _isSummarizing[noteId] = false);
+      if (mounted) {
+        setState(() => _isSummarizing[noteId] = false);
+      }
     }
   }
 

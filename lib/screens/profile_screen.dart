@@ -491,14 +491,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: const Color(0xFF1E293B)),
                     ),
-                    child: ListTile(
-                      leading: const Icon(Icons.security, color: Colors.indigoAccent),
-                      title: const Text('Security & Sessions', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Manage your active devices and login history', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen()));
-                      },
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: ListTile(
+                        leading: const Icon(Icons.security, color: Colors.indigoAccent),
+                        title: const Text('Security & Sessions', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('Manage your active devices and login history', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen()));
+                        },
+                      ),
                     ),
                   ),
 

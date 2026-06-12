@@ -413,7 +413,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         backgroundColor: const Color(0xFF1E1B4B),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 120.0),
         child: Form(
           key: _formKey,
           child: Column(

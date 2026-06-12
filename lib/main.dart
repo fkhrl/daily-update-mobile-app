@@ -5,10 +5,11 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/main_layout.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'services/alarm_service.dart';
 import 'package:toastification/toastification.dart';
 import 'dart:ui';
 import 'services/biometric_service.dart';
@@ -22,8 +23,10 @@ void main() async {
       tz.initializeTimeZones();
       final timeZone = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZone.identifier));
+      
+      await AlarmService.initialize();
     } catch (e) {
-      debugPrint('Timezone setup error: $e');
+      debugPrint('Timezone/Alarm setup error: $e');
     }
   }
 
@@ -186,7 +189,7 @@ class _AuthGateState extends State<AuthGate> {
     if (!_isAuthenticated) {
       return const LoginScreen();
     }
-    return _isOnboarded ? const DashboardScreen() : const OnboardingScreen();
+    return _isOnboarded ? const MainLayout() : const OnboardingScreen();
   }
 }
 

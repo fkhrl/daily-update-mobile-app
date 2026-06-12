@@ -1116,27 +1116,18 @@ class ApiService {
     throw Exception('Failed to load medicines');
   }
 
-  Future<Map<String, dynamic>> addMedicine(String name, String? morning, String? afternoon, String? night, {int? durationDays}) async {
+  Future<List<dynamic>> addMedicines(List<Map<String, dynamic>> medicines) async {
     final token = await getToken();
-    final body = {
-      'name': name,
-      'morning_time': morning,
-      'afternoon_time': afternoon,
-      'night_time': night,
-    };
-    if (durationDays != null) {
-      body['duration_days'] = durationDays.toString();
-    }
     
     final response = await http.post(
       Uri.parse('$baseUrl/medicines'),
       headers: _headers(token),
-      body: jsonEncode(body),
+      body: jsonEncode({'medicines': medicines}),
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body)['data'];
+      return jsonDecode(response.body)['data'] as List<dynamic>;
     }
-    throw Exception('Failed to add medicine');
+    throw Exception('Failed to add medicines');
   }
 
   Future<void> deleteMedicine(int id) async {

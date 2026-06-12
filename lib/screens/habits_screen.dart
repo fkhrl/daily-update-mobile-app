@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/toast_util.dart';
+import '../widgets/add_medicine_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../services/alarm_service.dart';
 import '../utils/ui_helpers.dart';
 
 class HabitsScreen extends StatefulWidget {
@@ -29,11 +31,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
   // Medicine Data
   List<dynamic> _medicines = [];
-  final TextEditingController _medNameController = TextEditingController();
-  final TextEditingController _medDurationController = TextEditingController();
-  TimeOfDay? _morningTime;
-  TimeOfDay? _afternoonTime;
-  TimeOfDay? _nightTime;
 
   @override
   void initState() {
@@ -120,42 +117,25 @@ class _HabitsScreenState extends State<HabitsScreen> {
   // ============================
   // MEDICINES
   // ============================
-  Future<void> _addMedicine() async {
-    if (_medNameController.text.trim().isEmpty) return;
+
+  Future<void> _addMedicines(List<Map<String, dynamic>> medicinesData) async {
     try {
-      String formatTime(TimeOfDay? t) {
-        if (t == null) return '';
-        final h = t.hour.toString().padLeft(2, '0');
-        final m = t.minute.toString().padLeft(2, '0');
-        return '$h:$m';
-      }
-
-      String? m = _morningTime != null ? formatTime(_morningTime) : null;
-      String? a = _afternoonTime != null ? formatTime(_afternoonTime) : null;
-      String? n = _nightTime != null ? formatTime(_nightTime) : null;
-      
-      int? durationDays = int.tryParse(_medDurationController.text.trim());
-
-      final newMed = await _apiService.addMedicine(_medNameController.text.trim(), m, a, n, durationDays: durationDays);
+      final newMeds = await _apiService.addMedicines(medicinesData);
       setState(() {
-        newMed['log'] = {'taken_morning': false, 'taken_afternoon': false, 'taken_night': false};
-        _medicines.add(newMed);
+        for (var med in newMeds) {
+          med['log'] = {'taken_morning': false, 'taken_afternoon': false, 'taken_night': false};
+          _medicines.add(med);
+        }
       });
-      _medNameController.clear();
-      _medDurationController.clear();
-      _morningTime = null;
-      _afternoonTime = null;
-      _nightTime = null;
       
       // Schedule local notifications for this medicine
-      // Schedule local notifications for this medicine
-      if (_morningTime != null && !kIsWeb) {
-        // Notification logic here
+      if (!kIsWeb) {
+        await AlarmService.scheduleMedicineAlarms(medicinesData);
       }
 
       if (!mounted) return;
       Navigator.pop(context);
-      _showSnackbar('Medicine added successfully!');
+      _showSnackbar('Medicines added successfully!');
     } catch (e) {
       if (!mounted) return;
       UIHelpers.showErrorDialog(context, 'Creation Failed', e);
@@ -371,74 +351,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF1E293B),
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setModalState) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 20, left: 20, right: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Add Medicine', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _medNameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Medicine Name',
-                  hintStyle: const TextStyle(color: Colors.white54),
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _medDurationController,
-                style: const TextStyle(color: Colors.white),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: 'Duration (Days) - Optional',
-                  hintStyle: const TextStyle(color: Colors.white54),
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 15),
-              ListTile(
-                title: const Text('Morning Time', style: TextStyle(color: Colors.white)),
-                trailing: Text(_morningTime?.format(context) ?? 'Not Set', style: const TextStyle(color: Colors.indigoAccent)),
-                onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 8, minute: 0));
-                  if (t != null) setModalState(() => _morningTime = t);
-                },
-              ),
-              ListTile(
-                title: const Text('Afternoon Time', style: TextStyle(color: Colors.white)),
-                trailing: Text(_afternoonTime?.format(context) ?? 'Not Set', style: const TextStyle(color: Colors.indigoAccent)),
-                onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 14, minute: 0));
-                  if (t != null) setModalState(() => _afternoonTime = t);
-                },
-              ),
-              ListTile(
-                title: const Text('Night Time', style: TextStyle(color: Colors.white)),
-                trailing: Text(_nightTime?.format(context) ?? 'Not Set', style: const TextStyle(color: Colors.indigoAccent)),
-                onTap: () async {
-                  final t = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 20, minute: 0));
-                  if (t != null) setModalState(() => _nightTime = t);
-                },
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _addMedicine,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent, minimumSize: const Size(double.infinity, 50)),
-                child: const Text('Add Medicine'),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      }),
+      builder: (ctx) => AddMedicineDialog(
+        onAddMedicines: _addMedicines,
+      ),
     );
   }
 
@@ -541,7 +456,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   _buildHealthDashboard(),
                   _buildMedicineSection(),
                   _buildHabitsSection(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),

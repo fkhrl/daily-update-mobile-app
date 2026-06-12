@@ -1,23 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 import '../models/task.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
-import 'login_screen.dart';
-import 'task_form_screen.dart';
-import 'referral_screen.dart';
-import 'feedback_dialog.dart';
-import 'habits_screen.dart';
-import 'notes_screen.dart';
-import 'ai_planner_screen.dart';
-import 'workspace_screen.dart';
-import 'profile_screen.dart';
-import 'subscription_screen.dart';
-import 'leaderboard_screen.dart';
-import 'study_hub_screen.dart';
-import 'walkthrough_overlay.dart';
-import '../widgets/ai_assistant_bottom_sheet.dart';
-
+import '../widgets/glass_container.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -26,762 +13,547 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _DashboardScreenState extends State<DashboardScreen> {
   List<Task> _tasks = [];
-  bool _isLoading = false;
-  String? _errorMessage;
-
-  bool _showWalkthrough = false;
+  bool _isLoading = true;
+  int _activeTab = 0; // 0: Today, 1: Upcoming, 2: Completed
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _loadTasks();
-    _checkWalkthrough();
-  }
-
-  void _checkWalkthrough() async {
-    final prefs = await SharedPreferences.getInstance();
-    final shown = prefs.getBool('walkthrough_shown') ?? false;
-    if (!shown) {
-      setState(() => _showWalkthrough = true);
-      prefs.setBool('walkthrough_shown', true);
-    }
-  }
-
-  void _showFeedbackDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => const FeedbackDialog(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadTasks() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+    setState(() => _isLoading = true);
     try {
       final tasksData = await ApiService().getTasks();
       setState(() {
         _tasks = tasksData['tasks'] as List<Task>;
       });
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Could not load tasks from API.';
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load tasks: $e')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _deleteTask(int id) async {
+  Future<void> _toggleTaskStatus(Task task) async {
+    final newStatus = task.status == 'completed' ? 'pending' : 'completed';
     try {
-      await ApiService().deleteTask(id);
-      setState(() {
-        _tasks.removeWhere((t) => t.id == id);
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task deleted successfully')),
+      await ApiService().updateTask(
+        task.id,
+        task.title,
+        task.description,
+        task.scheduledAt,
+        task.isInstant,
+        task.isNotified,
+        status: newStatus,
       );
-      }
+      _loadTasks();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting task: $e')),
-      );
+          SnackBar(content: Text('Error updating task: $e')),
+        );
       }
     }
   }
 
-  Future<void> _triggerTestEmail() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Triggering email engine...')),
+  List<Task> get _filteredTasks {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    if (_activeTab == 0) { // Today
+      return _tasks.where((t) {
+        final tDate = DateTime(t.scheduledAt.year, t.scheduledAt.month, t.scheduledAt.day);
+        return tDate.isAtSameMomentAs(todayStart) && t.status != 'completed';
+      }).toList();
+    } else if (_activeTab == 1) { // Upcoming
+      return _tasks.where((t) {
+        final tDate = DateTime(t.scheduledAt.year, t.scheduledAt.month, t.scheduledAt.day);
+        return tDate.isAfter(todayStart) && t.status != 'completed';
+      }).toList();
+    } else { // Completed
+      return _tasks.where((t) => t.status == 'completed').toList();
+    }
+  }
+
+  int get _dueTodayCount {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    return _tasks.where((t) {
+      final tDate = DateTime(t.scheduledAt.year, t.scheduledAt.month, t.scheduledAt.day);
+      return tDate.isAtSameMomentAs(todayStart) && t.status != 'completed';
+    }).length;
+  }
+
+  int get _overdueCount {
+    final now = DateTime.now();
+    return _tasks.where((t) {
+      return t.scheduledAt.isBefore(now) && t.status != 'completed';
+    }).length;
+  }
+
+  double get _completionPercentage {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayTasks = _tasks.where((t) {
+      final tDate = DateTime(t.scheduledAt.year, t.scheduledAt.month, t.scheduledAt.day);
+      return tDate.isAtSameMomentAs(todayStart);
+    }).toList();
+
+    if (todayTasks.isEmpty) return 0.0;
+    final completed = todayTasks.where((t) => t.status == 'completed').length;
+    return completed / todayTasks.length;
+  }
+
+  Task? get _todaysFocus {
+    final dueToday = _tasks.where((t) {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final tDate = DateTime(t.scheduledAt.year, t.scheduledAt.month, t.scheduledAt.day);
+      return tDate.isAtSameMomentAs(todayStart) && t.status != 'completed';
+    }).toList();
+
+    if (dueToday.isEmpty) return null;
+    
+    // Sort to find highest priority or earliest
+    dueToday.sort((a, b) {
+      if (a.priority == 'high' && b.priority != 'high') return -1;
+      if (b.priority == 'high' && a.priority != 'high') return 1;
+      return a.scheduledAt.compareTo(b.scheduledAt);
+    });
+    return dueToday.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100), // padding bottom for floating nav
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 30),
+                  _buildSmartOverview(),
+                  const SizedBox(height: 30),
+                  if (_todaysFocus != null) _buildTodaysFocus(_todaysFocus!),
+                  if (_todaysFocus != null) const SizedBox(height: 30),
+                  _buildTabs(),
+                  const SizedBox(height: 16),
+                  _buildTaskList(),
+                ],
+              ),
+            ),
     );
-    try {
-      final res = await ApiService().triggerNotifications();
-      _loadTasks(); // Reload to see updated notification status
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('Email Trigger Status', style: TextStyle(color: Colors.white)),
-          content: Text(res['message'] ?? 'Successfully executed.', style: const TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK', style: TextStyle(color: Color(0xFF818CF8))),
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        RichText(
+          text: const TextSpan(
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            children: [
+              TextSpan(text: 'Task', style: TextStyle(color: Color(0xFF818CF8))),
+              TextSpan(text: 'Digest', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Scaffold.of(context).openDrawer();
+              },
+              child: Stack(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: const Icon(Icons.person, color: Colors.white, size: 20),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF0F172A), width: 2),
+                      ),
+                    ),
+                  )
+                ],
+              ),
             )
           ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error triggering notification: $e')),
-      );
-    }
+        )
+      ],
+    );
   }
 
-  List<Task> _filterTasks(int tabIndex) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-
-    return _tasks.where((task) {
-      final taskDate = DateTime(task.scheduledAt.year, task.scheduledAt.month, task.scheduledAt.day);
-      if (tabIndex == 0) {
-        return taskDate.isAtSameMomentAs(today);
-      } else if (tabIndex == 1) {
-        return taskDate.isAtSameMomentAs(tomorrow);
-      } else {
-        return taskDate.isAfter(tomorrow);
-      }
+  Widget _buildSmartOverview() {
+    final completionPct = _completionPercentage;
+    final todayTasks = _tasks.where((t) {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final tDate = DateTime(t.scheduledAt.year, t.scheduledAt.month, t.scheduledAt.day);
+      return tDate.isAtSameMomentAs(todayStart);
     }).toList();
+    final completedCount = todayTasks.where((t) => t.status == 'completed').length;
+    final totalCount = todayTasks.length;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Smart Overview', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 4),
+              const Text('Good Morning, Alex!', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              const Text('Dynamic greeting! We\'ll a task management | key stats.', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: GlassContainer(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today_outlined, color: Colors.tealAccent, size: 14),
+                              const SizedBox(width: 4),
+                              const Text('Tasks Due Today', style: TextStyle(color: Colors.white70, fontSize: 9)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text('$_dueTodayCount', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GlassContainer(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time, color: Colors.tealAccent, size: 14),
+                              const SizedBox(width: 4),
+                              const Text('Overdue', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text('$_overdueCount', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              const Text('Daily Progress', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withOpacity(0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    )
+                  ],
+                ),
+                child: CircularPercentIndicator(
+                  radius: 60.0,
+                  lineWidth: 8.0,
+                  animation: true,
+                  percent: completionPct.clamp(0.0, 1.0),
+                  center: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${(completionPct * 100).toInt()}%',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24.0, color: Colors.white),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Completed',
+                        style: TextStyle(fontSize: 10.0, color: Colors.white70),
+                      ),
+                      Text(
+                        '$completedCount of $totalCount tasks done',
+                        style: const TextStyle(fontSize: 8.0, color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                  circularStrokeCap: CircularStrokeCap.round,
+                  backgroundColor: Colors.white10,
+                  linearGradient: const LinearGradient(
+                    colors: [Color(0xFF818CF8), Color(0xFF6366F1), Color(0xFFC084FC)],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Keep it up!', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            ],
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildTodaysFocus(Task task) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Today\'s Focus', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        GlassContainer(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          borderRadius: BorderRadius.circular(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.tealAccent.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.track_changes, color: Colors.tealAccent, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(task.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              )
+            ],
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildTabs() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Upcoming Tasks', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        GlassContainer(
+          borderRadius: BorderRadius.circular(30),
+          padding: const EdgeInsets.all(4),
+          child: Row(
+            children: [
+              _buildTabItem(0, 'Today'),
+              _buildTabItem(1, 'Upcoming'),
+              _buildTabItem(2, 'Completed'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabItem(int index, String title) {
+    final isActive = _activeTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(26),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.white54,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Color _getPriorityColor(String p) {
     switch (p.toLowerCase()) {
-      case 'urgent':
-        return Colors.redAccent;
-      case 'high':
-        return Colors.orangeAccent;
-      case 'medium':
-        return Colors.amberAccent;
-      case 'low':
-        return Colors.greenAccent;
-      default:
-        return Colors.white54;
+      case 'urgent': return Colors.redAccent;
+      case 'high': return Colors.redAccent;
+      case 'medium': return Colors.orangeAccent;
+      case 'low': return Colors.greenAccent;
+      default: return Colors.white54;
     }
   }
 
-  Color _getStatusColor(String s) {
-    switch (s.toLowerCase()) {
-      case 'completed':
-        return Colors.greenAccent;
-      case 'in_progress':
-        return Colors.blueAccent;
-      case 'cancelled':
-        return Colors.grey;
-      case 'pending':
-      default:
-        return Colors.amberAccent;
-    }
-  }
-
-  Widget _buildTaskList(List<Task> tasks) {
+  Widget _buildTaskList() {
+    final tasks = _filteredTasks;
     if (tasks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment_turned_in_outlined, size: 64, color: Colors.grey[600]),
-            const SizedBox(height: 16),
-            Text(
-              'No tasks scheduled for this period.',
-              style: TextStyle(color: Colors.grey[400], fontSize: 16),
-            ),
-          ],
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text('No tasks found.', style: TextStyle(color: Colors.white54)),
         ),
       );
     }
 
-    return ReorderableListView.builder(
-      padding: const EdgeInsets.all(16),
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: tasks.length,
-      onReorderItem: (oldIndex, newIndex) async {
-        setState(() {
-          final Task item = tasks.removeAt(oldIndex);
-          tasks.insert(newIndex, item);
-
-          // Update positions in original _tasks list
-          final Map<int, int> newPositions = {};
-          for (int i = 0; i < tasks.length; i++) {
-            newPositions[tasks[i].id] = i;
-          }
-
-          _tasks.sort((a, b) {
-            final posA = newPositions[a.id];
-            final posB = newPositions[b.id];
-            if (posA != null && posB != null) {
-              return posA.compareTo(posB);
-            }
-            if (posA != null) return -1;
-            if (posB != null) return 1;
-            return a.position.compareTo(b.position);
-          });
-        });
-
-        final List<int> orderedIds = tasks.map((t) => t.id).toList();
-        try {
-          await ApiService().reorderTasks(orderedIds);
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to reorder: $e')),
-          );
-          }
-          _loadTasks();
-        }
-      },
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final task = tasks[index];
+        final isCompleted = task.status == 'completed';
         final priorityColor = _getPriorityColor(task.priority);
-        final statusColor = _getStatusColor(task.status);
-        final isOverdue = task.scheduledAt.isBefore(DateTime.now()) &&
-            task.status != 'completed' &&
-            task.status != 'cancelled';
-        final cardBorder = isOverdue
-            ? BorderSide(color: Colors.redAccent.withValues(alpha: 0.8), width: 1.8)
-            : BorderSide(color: priorityColor.withValues(alpha: 0.3), width: 1);
 
-        return Dismissible(
-          key: Key(task.id.toString()),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            color: Colors.redAccent,
-            child: const Icon(Icons.delete, color: Colors.white),
-          ),
-          onDismissed: (direction) => _deleteTask(task.id),
-          child: Card(
-            color: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: cardBorder,
-            ),
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              title: Row(
-                children: [
-                  // Category Label Chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF334155),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      task.category.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 9,
+        return GlassContainer(
+          borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => _toggleTaskStatus(task),
+                child: Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF6366F1), width: 2),
+                    color: isCompleted ? const Color(0xFF6366F1) : Colors.transparent,
+                  ),
+                  child: isCompleted ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        decoration: isCompleted ? TextDecoration.lineThrough : null,
+                        decorationColor: Colors.white54,
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      task.title,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // Priority Dot/Tag
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: priorityColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: priorityColor.withValues(alpha: 0.5),
-                          blurRadius: 4,
-                          spreadRadius: 1,
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          DateFormat('h:mm a').format(task.scheduledAt),
+                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('|', style: TextStyle(color: Colors.white24, fontSize: 12)),
+                        const SizedBox(width: 8),
+                        Text(
+                          task.category.capitalize(),
+                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: priorityColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            task.priority.capitalize(),
+                            style: TextStyle(color: priorityColor, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
                         )
                       ],
                     ),
-                  ),
-                ],
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (task.description != null && task.description!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(task.description!, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    if (task.description != null && task.description!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        task.description!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ]
                   ],
-                  const SizedBox(height: 12),
-
-                  // Metadata Badges Row (Recurrence, Reminders, Checklist)
-                  // Metadata Badges Row (Recurrence, Reminders, Checklist)
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      if (task.recurrence != 'none') ...[
-                        const Icon(Icons.repeat, color: Colors.white60, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          task.recurrence.toUpperCase(),
-                          style: const TextStyle(color: Colors.white60, fontSize: 11),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (task.reminders.isNotEmpty) ...[
-                        const Icon(Icons.notifications_active_outlined, color: Color(0xFF818CF8), size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${task.reminders.length} reminder(s)',
-                          style: const TextStyle(color: Color(0xFF818CF8), fontSize: 11),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (task.subtasks.isNotEmpty) ...[
-                        const Icon(Icons.checklist, color: Color(0xFF10B981), size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${task.completionPercentage}% checklist',
-                          style: const TextStyle(color: Color(0xFF10B981), fontSize: 11),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (task.attachments != null && task.attachments!.isNotEmpty) ...[
-                        const Icon(Icons.attach_file, color: Colors.indigoAccent, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${task.attachments!.length}',
-                          style: const TextStyle(color: Colors.indigoAccent, fontSize: 11),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (task.voiceNotePath != null) ...[
-                        const Icon(Icons.mic, color: Colors.purpleAccent, size: 14),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Voice',
-                          style: TextStyle(color: Colors.purpleAccent, fontSize: 11),
-                        ),
-                      ],
-                    ],
-                  ),
-                  if (task.subtasks.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: task.completionPercentage / 100,
-                        backgroundColor: Colors.white12,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
-                        minHeight: 3,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-
-                  // Time and Status Row
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            DateFormat('MMM d, yyyy h:mm a').format(task.scheduledAt),
-                            style: TextStyle(
-                              color: isOverdue ? Colors.redAccent : const Color(0xFF818CF8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (isOverdue) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-                              ),
-                              child: const Text(
-                                'OVERDUE ⚠️',
-                                style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          // Status Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1),
-                            ),
-                            child: Text(
-                              task.status.replaceAll('_', ' ').toUpperCase(),
-                              style: TextStyle(
-                                color: statusColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          // Notification Status Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: task.isNotified ? Colors.green.withValues(alpha: 0.2) : Colors.amber.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              task.isNotified ? 'Notified' : 'Pending',
-                              style: TextStyle(
-                                color: task.isNotified ? Colors.greenAccent : Colors.amberAccent,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit, color: Colors.white54),
-                onPressed: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => TaskFormScreen(task: task)),
-                  );
-                  if (result == true) _loadTasks();
-                },
-              ),
-            ),
+              const SizedBox(width: 12),
+              // Assignee placeholder avatar
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF475569),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(Icons.person, color: Colors.white, size: 20),
+              )
+            ],
           ),
         );
       },
     );
   }
+}
 
-  void _showAiAssistantDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AiAssistantBottomSheet(onTaskCreated: _loadTasks),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: const Color(0xFF0F172A),
-          drawer: Drawer(
-            backgroundColor: const Color(0xFF0F172A),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1E1B4B),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            height: 50,
-                            width: 50,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.assignment_turned_in_outlined,
-                                color: Color(0xFF818CF8),
-                                size: 40,
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'TaskDigest',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.dashboard_outlined, color: Colors.white70),
-                  title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.local_fire_department_outlined, color: Colors.white70),
-                  title: const Text('Habit Tracker', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HabitsScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.school_outlined, color: Colors.white70),
-                  title: const Text('Study Mode / Student Hub', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const StudyHubScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.note_alt_outlined, color: Colors.white70),
-                  title: const Text('Journal & Notes', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NotesScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.auto_awesome, color: Colors.white70),
-                  title: const Text('AI Planner Recommendations', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AiPlannerScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.group_work_outlined, color: Colors.white70),
-                  title: const Text('Team Shared Workspaces', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WorkspaceScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.emoji_events_outlined, color: Colors.white70),
-                  title: const Text('Leaderboard & Badges', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.card_membership, color: Colors.amberAccent),
-                  title: const Text('Premium & Export Backups', style: TextStyle(color: Colors.amberAccent)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-                    ).then((_) => _loadTasks());
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white70),
-                  title: const Text('Security & Profile Settings', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.people_outline, color: Colors.white70),
-                  title: const Text('Invite Friends', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ReferralScreen()),
-                    ).then((_) => _loadTasks());
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.bug_report_outlined, color: Colors.white70),
-                  title: const Text('Send Feedback', style: TextStyle(color: Colors.white)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showFeedbackDialog();
-                  },
-                ),
-                const Divider(color: Colors.white24),
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.redAccent),
-                  title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await ApiService().logout();
-                    if (!context.mounted) return;
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-          appBar: AppBar(
-            title: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    height: 32,
-                    width: 32,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.assignment_turned_in_outlined,
-                        color: Color(0xFF818CF8),
-                        size: 28,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'TaskDigest',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1E1B4B),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () async {
-                  await ApiService().logout();
-                  if (!context.mounted) return;
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
-                },
-              ),
-            ],
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: const Color(0xFF6366F1),
-              tabs: const [
-                Tab(text: 'Today'),
-                Tab(text: 'Tomorrow'),
-                Tab(text: 'Future'),
-              ],
-            ),
-          ),
-          body: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
-              : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _loadTasks,
-                            child: const Text('Retry'),
-                          )
-                        ],
-                      ),
-                    )
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildTaskList(_filterTasks(0)),
-                        _buildTaskList(_filterTasks(1)),
-                        _buildTaskList(_filterTasks(2)),
-                      ],
-                    ),
-          floatingActionButton: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              FloatingActionButton(
-                heroTag: 'ai_btn',
-                backgroundColor: const Color(0xFF818CF8),
-                tooltip: 'AI & Voice Assistant',
-                child: const Icon(Icons.auto_awesome, color: Colors.white),
-                onPressed: () => _showAiAssistantDialog(context),
-              ),
-              const SizedBox(width: 16),
-              FloatingActionButton(
-                heroTag: 'add_btn',
-                backgroundColor: const Color(0xFF6366F1),
-                tooltip: 'Add Task Manually',
-                child: const Icon(Icons.add, color: Colors.white),
-                onPressed: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const TaskFormScreen()),
-                  );
-                  if (result == true) _loadTasks();
-                },
-              ),
-            ],
-          ),
-        ),
-        if (_showWalkthrough)
-          WalkthroughOverlay(
-            onDismissed: () {
-              setState(() {
-                _showWalkthrough = false;
-              });
-            },
-          ),
-      ],
-    );
+extension StringExtension on String {
+  String capitalize() {
+    if (isEmpty) return this;
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }

@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import 'register_screen.dart';
-import 'dashboard_screen.dart';
+import 'main_layout.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
         
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const MainLayout()),
         );
       } else {
         setState(() {
@@ -81,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final googleSignIn = GoogleSignIn(
         clientId: kIsWeb ? 'dummy-client-id.apps.googleusercontent.com' : null, // Fix for web assertion error, null for mobile to use google-services.json
+        serverClientId: '925566632947-qhm2gt78mjtf6vap178bhtdr8v9k6cuk.apps.googleusercontent.com', // Required for Android to get idToken
       );
       final account = await googleSignIn.signIn();
       if (account != null) {
@@ -91,13 +92,17 @@ class _LoginScreenState extends State<LoginScreen> {
             await NotificationService().syncFcmToken();
             if (!mounted) return;
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+              MaterialPageRoute(builder: (_) => const MainLayout()),
             );
           } else {
             setState(() {
               _errorMessage = response['message'] ?? 'Google Login failed';
             });
           }
+        } else {
+          setState(() {
+            _errorMessage = 'Google Login failed: No ID Token provided. Make sure Server Client ID is configured correctly.';
+          });
         }
       }
     } catch (e) {
