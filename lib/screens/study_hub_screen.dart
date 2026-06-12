@@ -61,13 +61,13 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
 
   Future<void> _addExam() async {
     if (_examTitleCtrl.text.isEmpty || _examSubjectCtrl.text.isEmpty || _examDateCtrl.text.isEmpty) return;
+    Navigator.pop(context); // Close modal immediately
     try {
       await _apiService.createExam(_examTitleCtrl.text, _examSubjectCtrl.text, _examDateCtrl.text);
       _examTitleCtrl.clear();
       _examSubjectCtrl.clear();
       _examDateCtrl.clear();
       if (!mounted) return;
-      Navigator.pop(context);
       _loadDashboard();
       ToastUtil.showSuccess(context, 'Exam added!');
     } catch (e) {
@@ -77,12 +77,12 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
 
   Future<void> _addTopic() async {
     if (_topicSubjectCtrl.text.isEmpty || _topicNameCtrl.text.isEmpty) return;
+    Navigator.pop(context); // Close modal immediately
     try {
       await _apiService.createStudyTopic(_topicSubjectCtrl.text, _topicNameCtrl.text);
       _topicSubjectCtrl.clear();
       _topicNameCtrl.clear();
       if (!mounted) return;
-      Navigator.pop(context);
       _loadDashboard();
       ToastUtil.showSuccess(context, 'Topic added to planner!');
     } catch (e) {
@@ -92,6 +92,7 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
 
   Future<void> _addRoutine() async {
     if (_routineSubjectCtrl.text.isEmpty) return;
+    Navigator.pop(context); // Close modal immediately
     try {
       final timeStr = _routineTime != null 
           ? '${_routineTime!.hour.toString().padLeft(2, '0')}:${_routineTime!.minute.toString().padLeft(2, '0')}' 
@@ -149,7 +150,8 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
       _routineSubjectCtrl.clear();
       _routineTime = null;
       _editingRoutineId = null;
-      Navigator.pop(context);
+      
+      if (!mounted) return;
       _loadDashboard();
     } catch (e) {
       if (mounted) ToastUtil.showError(context, e.toString());
@@ -365,11 +367,6 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: Text('Study Hub', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator()) 
         : RefreshIndicator(

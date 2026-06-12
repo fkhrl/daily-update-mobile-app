@@ -9,8 +9,9 @@ import '../services/api_service.dart';
 
 class TaskFormScreen extends StatefulWidget {
   final Task? task;
+  final VoidCallback? onTaskSaved;
 
-  const TaskFormScreen({super.key, this.task});
+  const TaskFormScreen({super.key, this.task, this.onTaskSaved});
 
   @override
   State<TaskFormScreen> createState() => _TaskFormScreenState();
@@ -351,15 +352,21 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         );
       }
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      if (widget.onTaskSaved != null) {
+        widget.onTaskSaved!();
+      } else {
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to save task: $e';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -384,34 +391,6 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.asset(
-                'assets/images/logo.png',
-                height: 24,
-                width: 24,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.assignment_turned_in_outlined,
-                    color: Color(0xFF818CF8),
-                    size: 20,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isEditing ? 'Edit Task' : 'New Task',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1E1B4B),
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 120.0),
         child: Form(

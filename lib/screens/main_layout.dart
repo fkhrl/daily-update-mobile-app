@@ -24,7 +24,14 @@ class _MainLayoutState extends State<MainLayout> {
     super.initState();
     _pages = [
       const DashboardScreen(),
-      const TaskFormScreen(),
+      TaskFormScreen(
+        onTaskSaved: () {
+          setState(() {
+            _pages[0] = DashboardScreen(key: UniqueKey());
+            _currentIndex = 0;
+          });
+        },
+      ),
       const StudyHubScreen(),
       const HabitsScreen(),
     ];
@@ -43,6 +50,45 @@ class _MainLayoutState extends State<MainLayout> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: RichText(
+          text: const TextSpan(
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            children: [
+              TextSpan(text: 'Task', style: TextStyle(color: Color(0xFF818CF8))),
+              TextSpan(text: 'Digest', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        actions: [
+          Builder(
+            builder: (ctx) => GestureDetector(
+              onTap: () {
+                Scaffold.of(ctx).openDrawer();
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       drawer: const MainDrawer(),
       body: Stack(
         children: [

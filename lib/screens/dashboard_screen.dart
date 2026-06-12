@@ -142,8 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(),
-                  const SizedBox(height: 30),
+
                   _buildSmartOverview(),
                   const SizedBox(height: 30),
                   if (_todaysFocus != null) _buildTodaysFocus(_todaysFocus!),
@@ -252,7 +251,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               const Icon(Icons.calendar_today_outlined, color: Colors.tealAccent, size: 14),
                               const SizedBox(width: 4),
-                              const Text('Tasks Due Today', style: TextStyle(color: Colors.white70, fontSize: 9)),
+                              const Expanded(
+                                child: Text(
+                                  'Tasks Due Today',
+                                  style: TextStyle(color: Colors.white70, fontSize: 9),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -273,7 +279,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               const Icon(Icons.access_time, color: Colors.tealAccent, size: 14),
                               const SizedBox(width: 4),
-                              const Text('Overdue', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                              const Expanded(
+                                child: Text(
+                                  'Overdue',
+                                  style: TextStyle(color: Colors.white70, fontSize: 10),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),

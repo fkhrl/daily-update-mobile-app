@@ -119,8 +119,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
   // ============================
 
   Future<void> _addMedicines(List<Map<String, dynamic>> medicinesData) async {
+    Navigator.pop(context); // Close modal immediately
     try {
       final newMeds = await _apiService.addMedicines(medicinesData);
+      if (!mounted) return;
       setState(() {
         for (var med in newMeds) {
           med['log'] = {'taken_morning': false, 'taken_afternoon': false, 'taken_night': false};
@@ -133,8 +135,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
         await AlarmService.scheduleMedicineAlarms(medicinesData);
       }
 
-      if (!mounted) return;
-      Navigator.pop(context);
       _showSnackbar('Medicines added successfully!');
     } catch (e) {
       if (!mounted) return;
@@ -197,12 +197,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
   Future<void> _createHabit() async {
     final name = _habitNameController.text.trim();
     if (name.isEmpty) return;
+    Navigator.pop(context); // Close modal immediately
     try {
       final newHabit = await _apiService.createHabit(name, difficulty: _selectedDifficulty, timeOfDay: _selectedTimeOfDay);
+      if (!mounted) return;
       setState(() => _habits.add(newHabit));
       _habitNameController.clear();
-      if (!mounted) return;
-      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       UIHelpers.showErrorDialog(context, 'Creation Failed', e);
@@ -304,12 +304,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(med['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Expanded(child: Text(med['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
                       IconButton(onPressed: () => _deleteMedicine(med['id']), icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20)),
                     ],
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                  Wrap(
+                    spacing: 0,
+                    runSpacing: -8, // slight negative runSpacing to avoid too much vertical gap
                     children: [
                       if (med['morning_time'] != null)
                         _buildMedCheckbox(med['id'], 'morning', log['taken_morning'] == 1 || log['taken_morning'] == true, 'Morning'),
@@ -330,8 +331,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
   Widget _buildMedCheckbox(int id, String period, bool isTaken, String label) {
     return Padding(
-      padding: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.only(right: 8),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Checkbox(
             value: isTaken,
@@ -443,11 +445,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: Text('Health & Habits', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
