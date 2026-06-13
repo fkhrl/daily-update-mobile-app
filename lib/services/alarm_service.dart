@@ -65,8 +65,9 @@ class AlarmService {
           DateTime alarmTime = scheduleTime.subtract(const Duration(minutes: 5));
 
           if (alarmTime.isAfter(now)) {
-            // Generate a unique ID for this specific alarm
-            final alarmId = alarmTime.millisecondsSinceEpoch.remainder(100000);
+            // Generate a unique ID for this specific alarm using medicine ID, time, and day offset
+            final uniqueStr = '${med['id']}_${timeStr}_$dayOffset';
+            final alarmId = uniqueStr.hashCode.abs() % 2147483647;
             
             await AndroidAlarmManager.oneShotAt(
               alarmTime,
@@ -106,6 +107,7 @@ class AlarmService {
 
     // 2. Play TTS
     final flutterTts = FlutterTts();
+    await flutterTts.awaitSpeakCompletion(true); // VERY IMPORTANT: Wait for TTS to finish before isolate dies
     await flutterTts.setLanguage("bn-BD");
     await flutterTts.setSpeechRate(0.5);
     await flutterTts.speak("আপনার $medName খাওয়ার সময় হয়েছে।");

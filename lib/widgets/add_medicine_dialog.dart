@@ -18,8 +18,15 @@ class _MedicineFormItem {
 
 class AddMedicineDialog extends StatefulWidget {
   final Function(List<Map<String, dynamic>>) onAddMedicines;
+  final Map<String, dynamic>? editingMedicine;
+  final Function(int, Map<String, dynamic>)? onEditMedicine;
 
-  const AddMedicineDialog({super.key, required this.onAddMedicines});
+  const AddMedicineDialog({
+    super.key, 
+    required this.onAddMedicines,
+    this.editingMedicine,
+    this.onEditMedicine,
+  });
 
   @override
   State<AddMedicineDialog> createState() => _AddMedicineDialogState();
@@ -32,7 +39,27 @@ class _AddMedicineDialogState extends State<AddMedicineDialog> {
   @override
   void initState() {
     super.initState();
-    _items.add(_MedicineFormItem());
+    final item = _MedicineFormItem();
+    if (widget.editingMedicine != null) {
+      final med = widget.editingMedicine!;
+      item.nameCtrl.text = med['name'] ?? '';
+      if (med['duration_days'] != null) item.durationCtrl.text = med['duration_days'].toString();
+      if (med['interval_days'] != null) item.intervalCtrl.text = med['interval_days'].toString();
+      
+      TimeOfDay? parseTime(String? timeStr) {
+        if (timeStr == null || timeStr.isEmpty) return null;
+        final parts = timeStr.split(':');
+        if (parts.length >= 2) {
+          return TimeOfDay(hour: int.tryParse(parts[0]) ?? 0, minute: int.tryParse(parts[1]) ?? 0);
+        }
+        return null;
+      }
+      
+      item.morning = parseTime(med['morning_time']);
+      item.afternoon = parseTime(med['afternoon_time']);
+      item.night = parseTime(med['night_time']);
+    }
+    _items.add(item);
   }
 
   @override
@@ -93,7 +120,11 @@ class _AddMedicineDialogState extends State<AddMedicineDialog> {
 
     setState(() => _isLoading = true);
     try {
-      await widget.onAddMedicines(medicinesData);
+      if (widget.editingMedicine != null && widget.onEditMedicine != null) {
+        await widget.onEditMedicine!(widget.editingMedicine!['id'], medicinesData.first);
+      } else {
+        await widget.onAddMedicines(medicinesData);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -109,7 +140,7 @@ class _AddMedicineDialogState extends State<AddMedicineDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Add Medicine', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(widget.editingMedicine != null ? 'Edit Medicine' : 'Add Medicine', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
             ],
           ),
@@ -126,7 +157,7 @@ class _AddMedicineDialogState extends State<AddMedicineDialog> {
             ),
           ),
           const SizedBox(height: 20),
-          if (_items.length < 10) // arbitrary limit to prevent infinite
+          if (_items.length < 10 && widget.editingMedicine == null) // arbitrary limit to prevent infinite
             TextButton.icon(
               onPressed: _addMore,
               icon: const Icon(Icons.add, color: Colors.indigoAccent),
@@ -138,7 +169,7 @@ class _AddMedicineDialogState extends State<AddMedicineDialog> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent, minimumSize: const Size(double.infinity, 50)),
             child: _isLoading 
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('Save All Medicines'),
+                : Text(widget.editingMedicine != null ? 'Update Medicine' : 'Save All Medicines'),
           ),
           const SizedBox(height: 20),
         ],

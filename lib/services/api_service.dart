@@ -1141,6 +1141,20 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> updateMedicine(int id, Map<String, dynamic> data) async {
+    final token = await getToken();
+    final response = await http.put(
+      Uri.parse('$baseUrl/medicines/$id'),
+      headers: _headers(token),
+      body: jsonEncode(data),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    }
+    throw Exception('Failed to update medicine');
+  }
+
+
   Future<Map<String, dynamic>> toggleMedicineLog(int id, String period) async {
     final token = await getToken();
     final response = await http.post(

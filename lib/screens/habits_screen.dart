@@ -305,7 +305,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(child: Text(med['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
-                      IconButton(onPressed: () => _deleteMedicine(med['id']), icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(onPressed: () => _showEditMedicineDialog(med), icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent, size: 20)),
+                          IconButton(onPressed: () => _deleteMedicine(med['id']), icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20)),
+                        ],
+                      ),
                     ],
                   ),
                   Wrap(
@@ -313,11 +319,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     runSpacing: -8, // slight negative runSpacing to avoid too much vertical gap
                     children: [
                       if (med['morning_time'] != null)
-                        _buildMedCheckbox(med['id'], 'morning', log['taken_morning'] == 1 || log['taken_morning'] == true, 'Morning'),
+                        _buildMedCheckbox(med['id'], 'morning', log['taken_morning'] == 1 || log['taken_morning'] == true, 'Morning', med['morning_time']),
                       if (med['afternoon_time'] != null)
-                        _buildMedCheckbox(med['id'], 'afternoon', log['taken_afternoon'] == 1 || log['taken_afternoon'] == true, 'Afternoon'),
+                        _buildMedCheckbox(med['id'], 'afternoon', log['taken_afternoon'] == 1 || log['taken_afternoon'] == true, 'Afternoon', med['afternoon_time']),
                       if (med['night_time'] != null)
-                        _buildMedCheckbox(med['id'], 'night', log['taken_night'] == 1 || log['taken_night'] == true, 'Night'),
+                        _buildMedCheckbox(med['id'], 'night', log['taken_night'] == 1 || log['taken_night'] == true, 'Night', med['night_time']),
                     ],
                   ),
                 ],
@@ -329,7 +335,27 @@ class _HabitsScreenState extends State<HabitsScreen> {
     );
   }
 
-  Widget _buildMedCheckbox(int id, String period, bool isTaken, String label) {
+  String _formatTimeStr(String t) {
+    try {
+      final parts = t.split(':');
+      int h = int.parse(parts[0]);
+      int m = int.parse(parts[1]);
+      String ampm = h >= 12 ? 'PM' : 'AM';
+      if (h == 0) h = 12;
+      else if (h > 12) h -= 12;
+      String hStr = h.toString().padLeft(2, '0');
+      String mStr = m.toString().padLeft(2, '0');
+      return '$hStr:$mStr $ampm';
+    } catch (_) {
+      return t;
+    }
+  }
+
+  Widget _buildMedCheckbox(int id, String period, bool isTaken, String label, String? timeStr) {
+    String displayLabel = label;
+    if (timeStr != null) {
+      displayLabel += ' (${_formatTimeStr(timeStr)})';
+    }
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Row(
@@ -342,8 +368,31 @@ class _HabitsScreenState extends State<HabitsScreen> {
             activeColor: Colors.indigoAccent,
             side: const BorderSide(color: Colors.white54),
           ),
-          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(displayLabel, style: const TextStyle(color: Colors.white70)),
         ],
+      ),
+    );
+  }
+
+  Future<void> _updateMedicine(int id, Map<String, dynamic> data) async {
+    try {
+      await ApiService().updateMedicine(id, data);
+      Navigator.pop(context);
+      _loadAllData();
+    } catch (e) {
+      _showSnackbar('Failed to update medicine: $e', isError: true);
+    }
+  }
+
+  void _showEditMedicineDialog(Map<String, dynamic> med) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      builder: (ctx) => AddMedicineDialog(
+        onAddMedicines: _addMedicines,
+        editingMedicine: med,
+        onEditMedicine: _updateMedicine,
       ),
     );
   }

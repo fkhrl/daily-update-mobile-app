@@ -1,8 +1,8 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=D:\flutter"
-export "FLUTTER_APPLICATION_PATH=D:\wamp64\www\project\laravel\dailyUpdate\mobile"
-export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=D:\wamp64\www\project\laravel\dailyUpdate\mobile\ios\Flutter\ephemeral\Packages\.packages\FlutterFramework"
+export "FLUTTER_ROOT=E:\flutter"
+export "FLUTTER_APPLICATION_PATH=D:\laragon\www\TaskDigest\daily-update-mobile-app"
+export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=D:\laragon\www\TaskDigest\daily-update-mobile-app\ios\Flutter\ephemeral\Packages\.packages\FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_TARGET=lib\main.dart"
 export "FLUTTER_BUILD_DIR=build"
