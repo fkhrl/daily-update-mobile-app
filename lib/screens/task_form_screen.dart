@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
+import '../utils/toast_util.dart';
 
 class TaskFormScreen extends StatefulWidget {
   final Task? task;
@@ -270,6 +271,30 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     }
   }
 
+  void _resetForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _selectedDate = DateTime.now().add(const Duration(minutes: 10));
+    _isInstant = false;
+    _selectedPriority = 'medium';
+    _selectedCategory = 'personal';
+    _isCustomCategory = false;
+    _customCategoryController.clear();
+    _selectedStatus = 'pending';
+    _selectedRecurrence = 'none';
+    _recurrenceInterval = 1;
+    _customReminders.clear();
+    _subtasks.clear();
+    _attachmentPaths.clear();
+    _voiceNotePath = null;
+    _selectedDependencyId = null;
+    _errorMessage = null;
+    _remind5Min = false;
+    _remind30Min = false;
+    _remind1Hour = false;
+    if (mounted) setState(() {});
+  }
+
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -354,8 +379,15 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       if (!mounted) return;
       if (widget.onTaskSaved != null) {
         widget.onTaskSaved!();
+      }
+      
+      if (widget.task != null) {
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop(true);
+        }
       } else {
-        Navigator.of(context).pop(true);
+        _resetForm();
+        ToastUtil.showSuccess(context, 'Task created successfully!');
       }
     } catch (e) {
       setState(() {

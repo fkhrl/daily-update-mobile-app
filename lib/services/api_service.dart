@@ -145,6 +145,8 @@ class ApiService {
       if (data['success'] == true) {
         return data['data'];
       }
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized');
     }
     throw Exception('Failed to fetch user data');
   }
@@ -870,6 +872,22 @@ class ApiService {
       return User.fromJson(data['data']);
     }
     throw Exception(data['message'] ?? 'Failed to update profile');
+  }
+
+  Future<User> updateProfilePicture(String imagePath) async {
+    final token = await getToken();
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/user/update'));
+    request.headers.addAll({'Authorization': 'Bearer $token'});
+    request.files.add(await http.MultipartFile.fromPath('avatar', imagePath));
+    
+    var response = await request.send();
+    var responseData = await response.stream.bytesToString();
+    var data = jsonDecode(responseData);
+    
+    if (response.statusCode == 200 && data['success'] == true) {
+      return User.fromJson(data['data']);
+    }
+    throw Exception(data['message'] ?? 'Failed to update profile picture');
   }
 
   Future<Map<String, dynamic>> completeOnboarding(String role, String goal) async {

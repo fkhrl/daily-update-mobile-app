@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../utils/toast_util.dart';
 import '../models/user.dart';
@@ -15,8 +17,10 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ApiService _apiService = ApiService();
+  final ImagePicker _picker = ImagePicker();
   User? _user;
   bool _isLoading = true;
+  bool _isUploadingImage = false;
   bool _isUpdatingQuietHours = false;
   bool _quietHoursEnabled = true;
   bool _biometricEnabled = false;
@@ -147,6 +151,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      if (image == null) return;
+
+      setState(() => _isUploadingImage = true);
+      final updatedUser = await _apiService.updateProfilePicture(image.path);
+      setState(() {
+        _user = updatedUser;
+      });
+      _showSnackbar('Profile picture updated successfully');
+    } catch (e) {
+      _showSnackbar('Failed to update profile picture: $e', isError: true);
+    } finally {
+      setState(() => _isUploadingImage = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,10 +195,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Row(
                       children: [
-                        const CircleAvatar(
-                          radius: 26,
-                          backgroundColor: Colors.indigoAccent,
-                          child: Icon(Icons.person, size: 30, color: Colors.white),
+                        GestureDetector(
+                          onTap: _pickAndUploadImage,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircleAvatar(
+                                radius: 26,
+                                backgroundColor: Colors.indigoAccent,
+                                backgroundImage: _user?.avatar != null && _user!.avatar!.isNotEmpty
+                                    ? NetworkImage('${ApiService.baseUrl.replaceAll('/api', '')}/storage/${_user!.avatar!}')
+                                    : null,
+                                child: _user?.avatar == null || _user!.avatar!.isEmpty
+                                    ? const Icon(Icons.person, size: 30, color: Colors.white)
+                                    : null,
+                              ),
+                              if (_isUploadingImage)
+                                const CircularProgressIndicator(color: Colors.white),
+                            ],
+                          ),
                         ),
                         const SizedBox(width: 15),
                         Expanded(

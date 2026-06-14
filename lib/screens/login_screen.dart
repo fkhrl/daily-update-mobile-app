@@ -80,8 +80,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       final googleSignIn = GoogleSignIn(
-        clientId: kIsWeb ? 'dummy-client-id.apps.googleusercontent.com' : null, // Fix for web assertion error, null for mobile to use google-services.json
+        clientId: kIsWeb ? 'dummy-client-id.apps.googleusercontent.com' : null, // Replace with your actual Web Client ID for web
         serverClientId: '925566632947-qhm2gt78mjtf6vap178bhtdr8v9k6cuk.apps.googleusercontent.com', // Required for Android to get idToken
+        scopes: ['email'],
       );
       final account = await googleSignIn.signIn();
       if (account != null) {
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Google Sign-In Error: $e';
+        _errorMessage = 'Google Sign-In Error: $e\n(Check SHA-1/SHA-256 in Firebase & Web Client ID)';
       });
     } finally {
       setState(() {
@@ -314,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: _isLoading ? null : _loginWithGoogle,
-                          icon: const Icon(Icons.g_mobiledata, size: 28),
+                          icon: Image.asset('assets/images/google_logo.png', height: 24, width: 24),
                           label: const Text('Continue with Google'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../models/task.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_container.dart';
+import 'task_form_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,8 +17,17 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   List<Task> _tasks = [];
+  User? _user;
   bool _isLoading = true;
   int _activeTab = 0; // 0: Today, 1: Upcoming, 2: Completed
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    if (hour < 20) return 'Good Evening';
+    return 'Good Night';
+  }
 
   @override
   void initState() {
@@ -28,8 +39,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final tasksData = await ApiService().getTasks();
+      final profileData = await ApiService().getProfile();
       setState(() {
         _tasks = tasksData['tasks'] as List<Task>;
+        _user = profileData;
       });
     } catch (e) {
       if (mounted) {
@@ -234,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text('Smart Overview', style: TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(height: 4),
-              const Text('Good Morning, Alex!', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              Text('${_getGreeting()}, ${_user?.name ?? 'User'}!', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               const Text('Dynamic greeting! We\'ll a task management | key stats.', style: TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 16),
@@ -533,11 +546,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         task.description!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
                       ),
-                    ]
+                    ],
+                    if (task.voiceNotePath != null && task.voiceNotePath!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      DashboardVoiceNotePlayer(voiceNotePath: task.voiceNotePath!),
+                    ],
+                    if (task.attachments != null && task.attachments!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      DashboardAttachmentsRow(attachments: task.attachments!),
+                    ],
                   ],
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white54, size: 20),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TaskFormScreen(
+                        task: task,
+                        onTaskSaved: _loadTasks,
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 12),
               // Assignee placeholder avatar
@@ -568,5 +603,95 @@ extension StringExtension on String {
   String capitalize() {
     if (isEmpty) return this;
     return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
+  }
+}
+
+class DashboardVoiceNotePlayer extends StatefulWidget {
+  final String voiceNotePath;
+  const DashboardVoiceNotePlayer({super.key, required this.voiceNotePath});
+
+  @override
+  State<DashboardVoiceNotePlayer> createState() => _DashboardVoiceNotePlayerState();
+}
+
+class _DashboardVoiceNotePlayerState extends State<DashboardVoiceNotePlayer> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.indigoAccent, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () async {
+              if (_isPlaying) {
+                await _audioPlayer.pause();
+                setState(() => _isPlaying = false);
+              } else {
+                String url = widget.voiceNotePath;
+                if (!url.startsWith('http')) {
+                  url = url.startsWith('/storage') ? 'https://dailyupdateapi.fkhrlit.com$url' : 'https://dailyupdateapi.fkhrlit.com/storage/$url';
+                }
+                await _audioPlayer.play(UrlSource(url));
+                setState(() => _isPlaying = true);
+                _audioPlayer.onPlayerComplete.listen((_) {
+                  if (mounted) setState(() => _isPlaying = false);
+                });
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          const Text('Voice Note', style: TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardAttachmentsRow extends StatelessWidget {
+  final List<String> attachments;
+  const DashboardAttachmentsRow({super.key, required this.attachments});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: attachments.map((path) {
+        String url = path;
+        if (!url.startsWith('http')) {
+          url = url.startsWith('/storage') ? 'https://dailyupdateapi.fkhrlit.com$url' : 'https://dailyupdateapi.fkhrlit.com/storage/$url';
+        }
+        bool isImage = url.toLowerCase().endsWith('.png') || url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.jpeg');
+        
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.white.withValues(alpha: 0.1),
+            image: isImage ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null,
+          ),
+          child: !isImage ? const Icon(Icons.insert_drive_file, color: Colors.white54, size: 20) : null,
+        );
+      }).toList(),
+    );
   }
 }

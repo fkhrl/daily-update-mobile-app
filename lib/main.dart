@@ -161,13 +161,18 @@ class _AuthGateState extends State<AuthGate> {
       final userResponse = await ApiService().getUser();
       isOnboarded = userResponse['onboarding_completed'] == 1 || userResponse['onboarding_completed'] == true;
     } catch (e) {
-      // If we fail to fetch the user, token might be invalid
-      await ApiService().logout();
-      setState(() {
-        _isLoading = false;
-        _isAuthenticated = false;
-      });
-      return;
+      if (e.toString().contains('Unauthorized')) {
+        await ApiService().logout();
+        setState(() {
+          _isLoading = false;
+          _isAuthenticated = false;
+        });
+        return;
+      } else {
+        // Network error or other API error, assume authenticated and onboarded
+        // to prevent forced logout on slow/no connection.
+        isOnboarded = true; 
+      }
     }
 
     setState(() {

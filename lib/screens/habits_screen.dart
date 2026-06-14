@@ -132,7 +132,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
       
       // Schedule local notifications for this medicine
       if (!kIsWeb) {
-        await AlarmService.scheduleMedicineAlarms(medicinesData);
+        // Must use newMeds because they contain the database ID
+        await AlarmService.scheduleMedicineAlarms(newMeds.cast<Map<String, dynamic>>());
       }
 
       _showSnackbar('Medicines added successfully!');
@@ -378,6 +379,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
     try {
       await ApiService().updateMedicine(id, data);
       Navigator.pop(context);
+      _showSnackbar('Medicine updated successfully!');
+
+      data['id'] = id;
+      if (!kIsWeb) {
+        await AlarmService.scheduleMedicineAlarms([data]);
+      }
+
       _loadAllData();
     } catch (e) {
       _showSnackbar('Failed to update medicine: $e', isError: true);
