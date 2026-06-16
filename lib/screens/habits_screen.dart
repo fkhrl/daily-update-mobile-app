@@ -51,6 +51,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
         _sleepHours = double.tryParse(healthData['sleep_hours']?.toString() ?? '0') ?? 0.0;
         _medicines = medData;
       });
+
+      if (!kIsWeb) {
+        final List<Map<String, dynamic>> safeMeds = _medicines.map((m) => Map<String, dynamic>.from(m)).toList();
+        await AlarmService.scheduleMedicineAlarms(safeMeds);
+      }
     } catch (e) {
       _showSnackbar('Error loading data: $e', isError: true);
     } finally {
@@ -130,13 +135,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
         }
       });
       
-      // Schedule local notifications for this medicine
-      if (!kIsWeb) {
-        // Must use newMeds because they contain the database ID
-        await AlarmService.scheduleMedicineAlarms(newMeds.cast<Map<String, dynamic>>());
-      }
-
       _showSnackbar('Medicines added successfully!');
+
+      _loadAllData();
     } catch (e) {
       if (!mounted) return;
       UIHelpers.showErrorDialog(context, 'Creation Failed', e);
@@ -212,7 +213,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
   void _showSnackbar(String msg, {bool isError = false}) {
     if (isError) {
-      ToastUtil.showError(context, msg);
+      ToastUtil.handleApiError(context, 'HABITS', msg);
     } else {
       ToastUtil.showSuccess(context, msg);
     }
@@ -378,13 +379,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
   Future<void> _updateMedicine(int id, Map<String, dynamic> data) async {
     try {
       await ApiService().updateMedicine(id, data);
+      if (!mounted) return;
       Navigator.pop(context);
       _showSnackbar('Medicine updated successfully!');
 
       data['id'] = id;
-      if (!kIsWeb) {
-        await AlarmService.scheduleMedicineAlarms([data]);
-      }
 
       _loadAllData();
     } catch (e) {

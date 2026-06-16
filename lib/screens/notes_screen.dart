@@ -166,7 +166,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
   void _showSnackbar(String msg, {bool isError = false}) {
     if (isError) {
-      ToastUtil.showError(context, msg);
+      ToastUtil.handleApiError(context, 'NOTES', msg);
     } else {
       ToastUtil.showSuccess(context, msg);
     }

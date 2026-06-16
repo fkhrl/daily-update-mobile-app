@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
-import 'profile_screen.dart';
 import 'task_form_screen.dart';
 import 'study_hub_screen.dart';
 import 'habits_screen.dart';
@@ -37,14 +36,7 @@ class _MainLayoutState extends State<MainLayout> {
     ];
   }
 
-  Widget _buildPlaceholderScreen(String title) {
-    return Center(
-      child: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontSize: 24),
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {

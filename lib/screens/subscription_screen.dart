@@ -68,7 +68,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   void _showSnackbar(String msg, {bool isError = false}) {
     if (isError) {
-      ToastUtil.showError(context, msg);
+      ToastUtil.handleApiError(context, 'SUBSCRIPTION', msg);
     } else {
       ToastUtil.showSuccess(context, msg);
     }

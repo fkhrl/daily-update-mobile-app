@@ -43,7 +43,18 @@ class _AddMedicineDialogState extends State<AddMedicineDialog> {
     if (widget.editingMedicine != null) {
       final med = widget.editingMedicine!;
       item.nameCtrl.text = med['name'] ?? '';
-      if (med['duration_days'] != null) item.durationCtrl.text = med['duration_days'].toString();
+      if (med['duration_days'] != null) {
+        item.durationCtrl.text = med['duration_days'].toString();
+      } else if (med['start_date'] != null && med['end_date'] != null) {
+        try {
+          final start = DateTime.parse(med['start_date']);
+          final end = DateTime.parse(med['end_date']);
+          final diff = end.difference(start).inDays + 1;
+          item.durationCtrl.text = diff.toString();
+        } catch (e) {
+          // ignore
+        }
+      }
       if (med['interval_days'] != null) item.intervalCtrl.text = med['interval_days'].toString();
       
       TimeOfDay? parseTime(String? timeStr) {

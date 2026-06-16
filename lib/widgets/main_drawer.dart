@@ -6,7 +6,6 @@ import '../screens/workspace_screen.dart';
 import '../screens/leaderboard_screen.dart';
 import '../screens/ai_planner_screen.dart';
 import '../screens/notes_screen.dart';
-import '../screens/focus_mode_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../screens/referral_screen.dart';
 import '../screens/security_screen.dart';
@@ -119,14 +118,6 @@ class _MainDrawerState extends State<MainDrawer> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.timer_outlined, color: Colors.white),
-              title: const Text('Focus Mode', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const FocusModeScreen()));
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.star_border_rounded, color: Colors.white),
               title: const Text('Subscription', style: TextStyle(color: Colors.white)),
               onTap: () {
@@ -154,8 +145,20 @@ class _MainDrawerState extends State<MainDrawer> {
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.redAccent),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-              onTap: () {
+              onTap: () async {
+                // Close drawer
                 Navigator.pop(context);
+                
+                // Perform actual logout from API (clears session and token)
+                try {
+                  await ApiService().logout();
+                } catch (e) {
+                  debugPrint('Logout error: $e');
+                }
+
+                if (!context.mounted) return;
+                
+                // Go to Login Screen
                 Navigator.pushAndRemoveUntil(
                   context, 
                   MaterialPageRoute(builder: (_) => const LoginScreen()),

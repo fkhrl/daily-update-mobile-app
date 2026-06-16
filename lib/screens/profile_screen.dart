@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -145,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showSnackbar(String msg, {bool isError = false}) {
     if (isError) {
-      ToastUtil.showError(context, msg);
+      ToastUtil.handleApiError(context, 'PROFILE', msg);
     } else {
       ToastUtil.showSuccess(context, msg);
     }
@@ -204,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 radius: 26,
                                 backgroundColor: Colors.indigoAccent,
                                 backgroundImage: _user?.avatar != null && _user!.avatar!.isNotEmpty
-                                    ? NetworkImage('${ApiService.baseUrl.replaceAll('/api', '')}/storage/${_user!.avatar!}')
+                                    ? NetworkImage(_user!.avatar!.startsWith('http') ? _user!.avatar! : '${ApiService.baseUrl.replaceAll('/api', '')}/storage/${_user!.avatar!}')
                                     : null,
                                 child: _user?.avatar == null || _user!.avatar!.isEmpty
                                     ? const Icon(Icons.person, size: 30, color: Colors.white)

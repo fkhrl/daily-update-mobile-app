@@ -59,8 +59,8 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
         if (_secondsRemaining > 0) {
           _secondsRemaining--;
           
-          // 2-minute warning
-          if (_secondsRemaining == 120 && !_alarmTriggeredForPhase) {
+          // 5-minute warning
+          if (_secondsRemaining == 300 && !_alarmTriggeredForPhase) {
             _alarmTriggeredForPhase = true;
             _playAlarmAndShowDialog();
           }
@@ -118,7 +118,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('2 Minutes Left!', style: TextStyle(color: Colors.orangeAccent)),
+        title: const Text('5 Minutes Left!', style: TextStyle(color: Colors.orangeAccent)),
         content: Text(
           'Your ${_phases[_currentPhaseIndex]['name']} phase is almost over. Do you need more time?', 
           style: const TextStyle(color: Colors.white70)
@@ -241,7 +241,7 @@ class _RoutineTimerScreenState extends State<RoutineTimerScreen> {
                     strokeWidth: 12,
                     backgroundColor: const Color(0xFF1E293B),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      _secondsRemaining <= 120 ? Colors.orangeAccent : Colors.indigoAccent
+                      _secondsRemaining <= 300 ? Colors.orangeAccent : Colors.indigoAccent
                     ),
                   ),
                 ),

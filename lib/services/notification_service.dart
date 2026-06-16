@@ -3,6 +3,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -15,11 +17,29 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
 );
 
 // Background message handler
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
     if (kDebugMode) {
       print("Background message received: ${message.messageId}");
+    }
+
+    // Handle Medicine Voice Assistant from Push
+    if (message.data['type'] == 'medicine_reminder') {
+      final timeStr = message.data['time'] ?? '';
+      final body = message.notification?.body ?? '';
+      // Body looks like: "Time to take your medicine(s): Napa, Xinc"
+      final medName = body.replaceAll('Time to take your medicine(s): ', '');
+
+      final prefs = await SharedPreferences.getInstance();
+      bool useVoice = prefs.getBool('medicine_voice_assistant') ?? true;
+      bool useBangla = prefs.getBool('medicine_voice_bangla') ?? true;
+
+      if (useVoice && !kIsWeb) {
+        // TTS from push notification has been removed because it overlaps with the local alarm_service TTS.
+        // The alarm_service.dart handles the offline, precise TTS.
+      }
     }
   } catch (e) {
     if (kDebugMode) {
@@ -89,7 +109,7 @@ class NotificationService {
       }
 
       // 3. Handle foreground notifications
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         if (kDebugMode) {
           print('Foreground message received: ${message.notification?.title}');
         }
@@ -108,9 +128,19 @@ class NotificationService {
                 channel.name,
                 channelDescription: channel.description,
                 icon: '@mipmap/ic_launcher',
+                styleInformation: BigTextStyleInformation(notification.body ?? ''),
               ),
             ),
           );
+        }
+
+        // Handle Medicine Voice Assistant from Push
+        if (message.data['type'] == 'medicine_reminder') {
+          final timeStr = message.data['time'] ?? '';
+          final body = message.notification?.body ?? '';
+          final medName = body.replaceAll('Time to take your medicine(s): ', '');
+          // TTS from push notification has been removed because it overlaps with the local alarm_service TTS.
+          // The alarm_service.dart handles the offline, precise TTS.
         }
       });
 

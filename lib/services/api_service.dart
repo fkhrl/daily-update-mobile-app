@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/task.dart';
+import 'local_db_service.dart';
+import 'sync_service.dart';
 
 class ApiService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator/web/desktop.
@@ -148,12 +150,29 @@ class ApiService {
     } else if (response.statusCode == 401) {
       throw Exception('Unauthorized');
     }
-    throw Exception('Failed to fetch user data');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   // Scoped by Workspace if workspaceId is provided, also handles pagination and tabs
   Future<Map<String, dynamic>> getTasks({int? workspaceId, String? tab, int page = 1, String? localDate}) async {
     final token = await getToken();
+    
+    // OFFLINE SYNC LOGIC
+    if (!SyncService().isOnline) {
+      try {
+        final localTasks = await LocalDbService().getTasks();
+        final tasks = localTasks.map((item) => Task.fromJson(item)).toList();
+        return {
+          'tasks': tasks,
+          'current_page': 1,
+          'last_page': 1,
+        };
+      } catch (e) {
+        if (kDebugMode) print('Failed to get tasks locally: $e');
+        return {'tasks': <Task>[], 'current_page': 1, 'last_page': 1};
+      }
+    }
+
     String url = '$baseUrl/tasks?page=$page';
     if (workspaceId != null) {
       url += '&workspace_id=$workspaceId';
@@ -164,26 +183,44 @@ class ApiService {
     if (localDate != null) {
       url += '&local_date=$localDate';
     }
-    final response = await http.get(
-      Uri.parse(url),
-      headers: _headers(token),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _headers(token),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
-        final paginationData = data['data'];
-        final List<dynamic> list = paginationData['data'] ?? paginationData;
-        final tasks = list.map((item) => Task.fromJson(item)).toList();
-        
-        return {
-          'tasks': tasks,
-          'current_page': paginationData['current_page'] ?? 1,
-          'last_page': paginationData['last_page'] ?? 1,
-        };
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final paginationData = data['data'];
+          final List<dynamic> list = paginationData['data'] ?? paginationData;
+          final tasks = list.map((item) => Task.fromJson(item)).toList();
+          
+          // CACHE TASKS LOCALLY
+          try {
+            await LocalDbService().saveTasks(list);
+          } catch(e) {
+            if (kDebugMode) print('Failed to cache tasks locally: $e');
+          }
+
+          return {
+            'tasks': tasks,
+            'current_page': paginationData['current_page'] ?? 1,
+            'last_page': paginationData['last_page'] ?? 1,
+          };
+        }
       }
+    } catch (e) {
+      // Fallback to local if network throws
+      final localTasks = await LocalDbService().getTasks();
+      final tasks = localTasks.map((item) => Task.fromJson(item)).toList();
+      return {
+        'tasks': tasks,
+        'current_page': 1,
+        'last_page': 1,
+      };
     }
-    throw Exception('Failed to load tasks');
+    throw Exception('Failed to process request');
   }
 
 
@@ -665,7 +702,7 @@ class ApiService {
     if (response.statusCode == 200 && data['success'] == true) {
       return data['data'] is String ? jsonDecode(data['data']) : data['data'];
     }
-    throw Exception('Failed to load coaching report');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   // ==================== PHASE 4: COLLABORATION ====================
@@ -677,7 +714,7 @@ class ApiService {
     if (response.statusCode == 200 && data['success'] == true) {
       return data['data'];
     }
-    throw Exception('Failed to load workspaces');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<Map<String, dynamic>> createWorkspace(String name, {String? templateType}) async {
@@ -704,7 +741,7 @@ class ApiService {
     if (response.statusCode == 200 && data['success'] == true) {
       return data['data'];
     }
-    throw Exception('Failed to load workspace details');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<void> inviteWorkspaceMember(int id, String email, {String role = 'member'}) async {
@@ -830,7 +867,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return User.fromJson(jsonDecode(response.body));
     }
-    throw Exception('Failed to load user profile');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   // ==================== PHASE 7: GAMIFICATION ====================
@@ -970,7 +1007,7 @@ class ApiService {
     if (response.statusCode == 200 && data['success'] == true) {
       return data['data'];
     }
-    throw Exception('Failed to load study dashboard');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<void> createExam(String title, String subject, String date) async {
@@ -985,7 +1022,7 @@ class ApiService {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to create exam');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
   }
 
@@ -1006,7 +1043,7 @@ class ApiService {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to create topic');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
   }
 
@@ -1024,7 +1061,7 @@ class ApiService {
       body: body,
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to revise topic');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
   }
 
@@ -1043,7 +1080,7 @@ class ApiService {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to create routine');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
     final body = jsonDecode(response.body);
     return body['data'];
@@ -1064,7 +1101,7 @@ class ApiService {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to update routine');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
     final body = jsonDecode(response.body);
     return body['data'];
@@ -1077,7 +1114,7 @@ class ApiService {
       headers: _headers(token),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to delete routine');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
   }
 
@@ -1093,7 +1130,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     }
-    throw Exception('Failed to get health metrics');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<Map<String, dynamic>> updateWater(int glasses) async {
@@ -1106,7 +1143,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     }
-    throw Exception('Failed to update water');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<Map<String, dynamic>> updateSleep(double hours) async {
@@ -1119,7 +1156,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     }
-    throw Exception('Failed to update sleep');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<List<dynamic>> getMedicines() async {
@@ -1131,7 +1168,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     }
-    throw Exception('Failed to load medicines');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<List<dynamic>> addMedicines(List<Map<String, dynamic>> medicines) async {
@@ -1145,7 +1182,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'] as List<dynamic>;
     }
-    throw Exception('Failed to add medicines');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
   Future<void> deleteMedicine(int id) async {
@@ -1155,7 +1192,7 @@ class ApiService {
       headers: _headers(token),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to delete medicine');
+      throw Exception('[${response.statusCode}] Failed to process request');
     }
   }
 
@@ -1169,7 +1206,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     }
-    throw Exception('Failed to update medicine');
+    throw Exception('[${response.statusCode}] Failed to process request');
   }
 
 
@@ -1183,6 +1220,30 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     }
-    throw Exception('Failed to toggle medicine log');
+    throw Exception('[${response.statusCode}] Failed to process request');
+  }
+
+  // ==== NotebookLM Study Assistant ====
+  Future<String> askNotebookLM(String base64Image, String? question) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/study/notebooklm'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'image': base64Image,
+        if (question != null && question.isNotEmpty) 'question': question
+      }),
+    );
+    
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data']['answer'];
+    }
+    
+    try {
+      final errorMsg = jsonDecode(response.body)['message'];
+      throw Exception(errorMsg);
+    } catch (_) {
+      throw Exception('[${response.statusCode}] Failed to process request');
+    }
   }
 }

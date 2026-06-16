@@ -136,7 +136,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 
   Future<void> _pickAttachments() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    FilePickerResult? result = await FilePicker.pickFiles();
     if (result != null) {
       setState(() {
         _attachmentPaths.addAll(result.paths.whereType<String>());
@@ -145,7 +145,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   }
 
   Future<void> _pickVoiceNote() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    FilePickerResult? result = await FilePicker.pickFiles(type: FileType.audio);
     if (result != null && result.paths.isNotEmpty) {
       setState(() {
         _voiceNotePath = result.paths.first;

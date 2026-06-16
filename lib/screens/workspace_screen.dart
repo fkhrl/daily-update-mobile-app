@@ -346,7 +346,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   void _showSnackbar(String msg, {bool isError = false}) {
     if (isError) {
-      ToastUtil.showError(context, msg);
+      ToastUtil.handleApiError(context, 'WORKSPACE', msg);
     } else {
       ToastUtil.showSuccess(context, msg);
     }

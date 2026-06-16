@@ -13,9 +13,11 @@ import 'services/alarm_service.dart';
 import 'package:toastification/toastification.dart';
 import 'dart:ui';
 import 'services/biometric_service.dart';
+import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SyncService().initialize();
 
   // Initialize timezone for local notifications
   if (!kIsWeb) {

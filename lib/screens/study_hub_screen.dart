@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../utils/toast_util.dart';
 import 'focus_mode_screen.dart';
 import 'routine_timer_screen.dart';
+import 'notebooklm_screen.dart';
 
 class StudyHubScreen extends StatefulWidget {
   const StudyHubScreen({super.key});
@@ -164,6 +164,28 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
       await NotificationService().cancelRoutineReminder(id);
       if (!mounted) return;
       ToastUtil.showSuccess(context, 'Routine deleted!');
+      _loadDashboard();
+    } catch (e) {
+      if (mounted) ToastUtil.showError(context, e.toString());
+    }
+  }
+
+  Future<void> _deleteExam(int id) async {
+    try {
+      await _apiService.deleteExam(id);
+      if (!mounted) return;
+      ToastUtil.showSuccess(context, 'Exam deleted!');
+      _loadDashboard();
+    } catch (e) {
+      if (mounted) ToastUtil.showError(context, e.toString());
+    }
+  }
+
+  Future<void> _deleteTopic(int id) async {
+    try {
+      await _apiService.deleteStudyTopic(id);
+      if (!mounted) return;
+      ToastUtil.showSuccess(context, 'Topic deleted!');
       _loadDashboard();
     } catch (e) {
       if (mounted) ToastUtil.showError(context, e.toString());
@@ -341,15 +363,27 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Text(exam['subject'], style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text(exam['title'], style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const Spacer(),
-          Text(daysLeft < 0 ? 'Passed' : '$daysLeft', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-          Text(daysLeft == 1 ? 'day left' : 'days left', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(exam['subject'], style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(exam['title'], style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const Spacer(),
+              Text(daysLeft < 0 ? 'Passed' : '$daysLeft', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+              Text(daysLeft == 1 ? 'day left' : 'days left', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+          Positioned(
+            right: -12,
+            top: -12,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white54, size: 16),
+              onPressed: () => _deleteExam(exam['id']),
+            ),
+          ),
         ],
       ),
     );
@@ -398,6 +432,46 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
                       ),
                     ),
                   
+                  const SizedBox(height: 24),
+                  
+                  // NotebookLM Assistant Card
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const NotebookLmScreen()));
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.auto_awesome, color: Colors.white, size: 40),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('AI Assistant', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                                SizedBox(height: 4),
+                                Text('Scan questions for AI answers', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios, color: Colors.white70),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 24),
                   
                   // Focus Timer Card
@@ -611,8 +685,13 @@ class _StudyHubScreenState extends State<StudyHubScreen> {
                                   minimumSize: Size.zero,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                child: const Text('Mark Revised'),
-                              )
+                                child: Text(isDue ? 'Revise Now' : 'Mark Revised'),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => _deleteTopic(topic['id']),
+                              ),
                             ],
                           ),
                         );
